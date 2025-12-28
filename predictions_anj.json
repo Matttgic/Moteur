@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-28T03:01:59.345909",
+  "generated_at": "2025-12-28T07:20:55.583247",
   "bets": [
     {
       "date": "2025-12-30 19:30:00+00:00",
@@ -7,9 +7,9 @@
       "match": "Burnley vs Newcastle",
       "bet_type": "Home Win",
       "model_prob": 33.0,
-      "bookmaker_odds": 5.25,
-      "value_edge": 13.9,
-      "suggested_wager": 42.98
+      "bookmaker_odds": 4.7,
+      "value_edge": 11.7,
+      "suggested_wager": 37.12
     },
     {
       "date": "2025-12-30 19:30:00+00:00",
