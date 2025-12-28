@@ -2,14 +2,14 @@ name: Daily Betting Algo
 
 on:
   schedule:
-    - cron: '0 7 * * *' # Tourne tous les jours à 07h00 UTC (08h00 France)
-  workflow_dispatch: # Permet de lancer manuellement le bouton "Run workflow"
+    - cron: '0 7 * * *' # Tourne tous les jours à 07h00 UTC
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Important pour pouvoir sauvegarder les fichiers
+      contents: write
 
     steps:
       - name: Checkout code
@@ -26,7 +26,7 @@ jobs:
 
       - name: Run Algorithm
         env:
-          API_KEY: ${{ secrets.API_FOOTBALL_KEY }} # Ta clé secrète GitHub
+          API_KEY: ${{ secrets.API_FOOTBALL_KEY }}
         run: python main.py
 
       - name: Commit and Push Data
@@ -34,14 +34,14 @@ jobs:
           git config --global user.name 'GitHub Action Bot'
           git config --global user.email 'action@github.com'
           
-          # --- CORRECTION DU CONFLIT ---
-          # On récupère d'abord les changements distants (ton main.py modifié)
-          # L'option --rebase permet d'appliquer tes changements proprement
+          # 1. On ajoute et on commit D'ABORD les fichiers générés
+          # Cela "protège" le travail du robot avant de tenter la mise à jour
+          git add data_cache/ predictions_anj.json
+          git commit -m "Auto-update: Predictions & Cache" || echo "Rien à commiter"
+          
+          # 2. MAINTENANT on peut récupérer tes modifications (ton main.py)
+          # Le --rebase va placer le commit du robot juste APRES tes modifications
           git pull origin main --rebase
           
-          # Ensuite on ajoute les nouveaux fichiers générés
-          git add data_cache/ predictions_anj.json
-          
-          # On commit et on push (le || exit 0 évite de planter s'il n'y a rien de nouveau)
-          git commit -m "Auto-update: Predictions & Cache" || exit 0
+          # 3. On envoie le tout
           git push
