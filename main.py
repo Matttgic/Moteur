@@ -7,25 +7,27 @@ import numpy as np
 from datetime import datetime
 from scipy.stats import poisson
 
-# --- 1. CONFIGURATION & SÉCURITÉ ---
-# La clé est récupérée depuis les secrets GitHub
+# --- 1. CONFIGURATION ---
 API_KEY = os.environ.get("API_KEY")
-
-# Si on lance en local pour tester sans variable d'env, on peut mettre une clé par défaut (optionnel)
 if not API_KEY:
-    print("ATTENTION : Aucune clé API trouvée dans les variables d'environnement.")
-    # API_KEY = "TA_CLE_ICI_POUR_TEST_LOCAL" # Décommente ça seulement pour tester sur ton PC
+    # Fallback pour test local (à retirer en prod)
+    # API_KEY = "TA_CLE_ICI"
+    pass
 
 BASE_URL = "https://v3.football.api-sports.io"
 HEADERS = {'x-apisports-key': API_KEY}
+
+# Configuration ANJ
+BOOKMAKER_ID = 16  # 16 = Betclic (Souvent dispo et cotes FR)
+# Autres options : 8 (Unibet), 52 (Winamax - parfois restreint via API)
 
 LEAGUES = {
     "Premier League": 39,
     "Ligue 1": 61
 }
-CURRENT_SEASON = 2025
+CURRENT_SEASON = 2025 # Assure-toi que c'est la saison active
 
-# --- 2. CLASSE ETL (Extraction & Cache) ---
+# --- 2. ETL (EXTRACTION) ---
 class FootballDataConnector:
     def __init__(self):
         if not os.path.exists('data_cache'):
@@ -38,224 +40,214 @@ class FootballDataConnector:
             response = requests.get(url, headers=HEADERS, params=params)
             if response.status_code == 200:
                 return response.json()['response']
-            else:
-                print(f"Erreur API {response.status_code}: {response.text}")
-                return []
+            print(f"Erreur API {response.status_code}: {response.text}")
+            return []
         except Exception as e:
-            print(f"Exception lors de l'appel API : {e}")
+            print(f"Exception API : {e}")
             return []
 
     def get_season_fixtures(self, league_id, season):
+        # On récupère TOUTE la saison (passés et futurs)
         filename = f"data_cache/fixtures_{league_id}_{season}.json"
         
-        # Vérification Cache (24h)
+        # Cache de 12h seulement pour avoir les mises à jour récentes
         if os.path.exists(filename):
-            file_age = time.time() - os.path.getmtime(filename)
-            if file_age < 86400: 
+            if (time.time() - os.path.getmtime(filename)) < 43200: 
                 print(f"Chargement cache: Ligue {league_id}")
                 with open(filename, 'r') as f:
                     return pd.DataFrame(json.load(f))
 
-        # Appel API
-        print(f"Appel API: Ligue {league_id} - Saison {season}")
+        print(f"Appel API (Fixtures): Ligue {league_id}")
         data = self._get_from_api("/fixtures", {"league": league_id, "season": season})
-        
         if data:
             df = pd.json_normalize(data)
             df.to_json(filename, orient='records', indent=4)
             return df
         return pd.DataFrame()
 
-# --- 3. FEATURES ENGINEERING (Elo & Stats) ---
+    def get_real_odds(self, fixture_id):
+        """Récupère les cotes réelles pour un match spécifique."""
+        time.sleep(0.2) # Petite pause pour respecter le rate limit (max 10 req/sec)
+        params = {"fixture": fixture_id, "bookmaker": BOOKMAKER_ID}
+        data = self._get_from_api("/odds", params)
+        
+        if data and len(data) > 0:
+            # On cherche les cotes "Match Winner" (id=1 chez API-Football)
+            for market in data[0]['bookmakers'][0]['bets']:
+                if market['id'] == 1: # 1 = Winner
+                    odds = {v['value']: v['odd'] for v in market['values']}
+                    return {
+                        "home": odds.get("Home"),
+                        "draw": odds.get("Draw"),
+                        "away": odds.get("Away")
+                    }
+        return None
+
+# --- 3. FEATURES (ELO & STATS) ---
 class EloTracker:
-    def __init__(self, k_factor=20, home_advantage=100):
+    def __init__(self):
         self.ratings = {}
-        self.k = k_factor
-        self.home_adv = home_advantage
         self.default_rating = 1500
 
     def get_rating(self, team):
         return self.ratings.get(team, self.default_rating)
 
-    def expected_result(self, rating_a, rating_b):
-        return 1 / (1 + 10 ** ((rating_b - rating_a) / 400))
+    def update_ratings(self, home, away, goal_diff):
+        k_factor = 20
+        # Formule Elo simplifiée
+        r_h = self.get_rating(home)
+        r_a = self.get_rating(away)
+        exp_h = 1 / (1 + 10 ** ((r_a - r_h - 100) / 400)) # +100 avantage domicile
+        
+        actual = 1 if goal_diff > 0 else (0.5 if goal_diff == 0 else 0)
+        delta = k_factor * (actual - exp_h)
+        
+        self.ratings[home] = r_h + delta
+        self.ratings[away] = r_a - delta
 
-    def update_ratings(self, home_team, away_team, goal_diff):
-        if goal_diff > 0: actual = 1
-        elif goal_diff == 0: actual = 0.5
-        else: actual = 0
-        
-        r_home = self.get_rating(home_team)
-        r_away = self.get_rating(away_team)
-        
-        p_home = self.expected_result(r_home + self.home_adv, r_away)
-        margin_mult = np.log(abs(goal_diff) + 1) if goal_diff != 0 else 1
-        delta = self.k * margin_mult * (actual - p_home)
-        
-        self.ratings[home_team] = r_home + delta
-        self.ratings[away_team] = r_away - delta
-
-def process_features(df):
-    if df.empty: return df
+def process_and_split(df):
+    """Sépare l'historique (pour apprendre) du futur (pour parier)."""
+    if df.empty: return pd.DataFrame(), pd.DataFrame()
     
     # Nettoyage
     df['fixture.date'] = pd.to_datetime(df['fixture.date'])
     df = df.sort_values('fixture.date')
+
+    # 1. On sépare Passé (FT) et Futur (NS = Not Started)
     finished = df[df['fixture.status.short'] == 'FT'].copy()
+    upcoming = df[df['fixture.status.short'].isin(['NS', 'TBD'])].copy()
     
-    # Elo
-    elo_tracker = EloTracker()
-    elo_home_vals = []
-    elo_away_vals = []
+    # 2. Calcul Elo & Stats sur le Passé
+    elo = EloTracker()
+    stats_memory = {} # Pour stocker la forme récente
+
+    # Format long pour stats glissantes
+    history_records = []
     
-    for index, row in finished.iterrows():
-        h_team = row['teams.home.name']
-        a_team = row['teams.away.name']
-        h_goals = row['goals.home']
-        a_goals = row['goals.away']
+    for _, row in finished.iterrows():
+        h, a = row['teams.home.name'], row['teams.away.name']
+        gh, ga = row['goals.home'], row['goals.away']
         
-        elo_home_vals.append(elo_tracker.get_rating(h_team))
-        elo_away_vals.append(elo_tracker.get_rating(a_team))
+        # Mise à jour Elo
+        elo.update_ratings(h, a, gh - ga)
         
-        if pd.notna(h_goals) and pd.notna(a_goals):
-            elo_tracker.update_ratings(h_team, a_team, h_goals - a_goals)
+        # Enregistrement pour Stats
+        history_records.append({'date': row['fixture.date'], 'team': h, 'gf': gh, 'ga': ga})
+        history_records.append({'date': row['fixture.date'], 'team': a, 'gf': ga, 'ga': gh})
 
-    finished['elo_home'] = elo_home_vals
-    finished['elo_away'] = elo_away_vals
-    
-    # Stats Glissantes (Correction avec transform)
-    matches_long = []
-    for idx, row in finished.iterrows():
-        matches_long.append({
-            'date': row['fixture.date'], 'team': row['teams.home.name'],
-            'goals_for': row['goals.home'], 'goals_against': row['goals.away'], 'is_home': 1
-        })
-        matches_long.append({
-            'date': row['fixture.date'], 'team': row['teams.away.name'],
-            'goals_for': row['goals.away'], 'goals_against': row['goals.home'], 'is_home': 0
-        })
+    # Calcul des Moyennes Glissantes (Derniers 5 matchs)
+    df_hist = pd.DataFrame(history_records).sort_values('date')
+    if not df_hist.empty:
+        df_hist['avg_gf'] = df_hist.groupby('team')['gf'].transform(lambda x: x.rolling(5).mean())
+        df_hist['avg_ga'] = df_hist.groupby('team')['ga'].transform(lambda x: x.rolling(5).mean())
         
-    df_long = pd.DataFrame(matches_long).sort_values('date')
-    
-    df_long['avg_goals_for_5'] = df_long.groupby('team')['goals_for'].transform(lambda x: x.rolling(window=5).mean().shift())
-    df_long['avg_goals_against_5'] = df_long.groupby('team')['goals_against'].transform(lambda x: x.rolling(window=5).mean().shift())
-    
-    # Mapping rapide
-    df_long['date_team'] = list(zip(df_long['date'], df_long['team']))
-    stats_map = df_long.set_index('date_team')[['avg_goals_for_5', 'avg_goals_against_5']].to_dict('index')
-    
-    finished['date_team_home'] = list(zip(finished['fixture.date'], finished['teams.home.name']))
-    finished['date_team_away'] = list(zip(finished['fixture.date'], finished['teams.away.name']))
-    
-    finished['home_att_5'] = finished['date_team_home'].map(lambda x: stats_map.get(x, {}).get('avg_goals_for_5', np.nan))
-    finished['home_def_5'] = finished['date_team_home'].map(lambda x: stats_map.get(x, {}).get('avg_goals_against_5', np.nan))
-    finished['away_att_5'] = finished['date_team_away'].map(lambda x: stats_map.get(x, {}).get('avg_goals_for_5', np.nan))
-    finished['away_def_5'] = finished['date_team_away'].map(lambda x: stats_map.get(x, {}).get('avg_goals_against_5', np.nan))
-    
-    finished.drop(columns=['date_team_home', 'date_team_away'], inplace=True)
-    return finished.dropna(subset=['home_att_5', 'away_att_5'])
+        # On garde la DERNIÈRE stat connue pour chaque équipe
+        last_stats = df_hist.groupby('team').last()[['avg_gf', 'avg_ga']].to_dict('index')
+    else:
+        last_stats = {}
 
-# --- 4. MODÈLES & STRATÉGIE ---
-def calculate_poisson_probs(avg_home_goals, avg_away_goals):
-    lamb_home = max(0.1, avg_home_goals)
-    lamb_away = max(0.1, avg_away_goals)
-    prob_home, prob_draw, prob_away = 0, 0, 0
+    # 3. Préparation des matchs FUTURS
+    # On leur injecte l'Elo ACTUEL et les stats ACTUELLES
+    upcoming['elo_home'] = upcoming['teams.home.name'].apply(lambda x: elo.get_rating(x))
+    upcoming['elo_away'] = upcoming['teams.away.name'].apply(lambda x: elo.get_rating(x))
     
-    for h in range(6):
-        for a in range(6):
-            p = poisson.pmf(h, lamb_home) * poisson.pmf(a, lamb_away)
-            if h > a: prob_home += p
-            elif h == a: prob_draw += p
-            else: prob_away += p
-            
-    total = prob_home + prob_draw + prob_away
-    return prob_home/total, prob_draw/total, prob_away/total
+    # Injection des stats (avec valeurs par défaut si début de saison)
+    def get_stat(team, type_stat):
+        return last_stats.get(team, {}).get(type_stat, 1.2) # 1.2 but moyen par défaut
 
-def calculate_elo_probs(elo_home, elo_away):
-    diff = elo_home - elo_away + 100
-    return 1 / (1 + 10 ** (-diff / 400))
+    upcoming['home_att'] = upcoming['teams.home.name'].apply(lambda x: get_stat(x, 'avg_gf'))
+    upcoming['away_def'] = upcoming['teams.away.name'].apply(lambda x: get_stat(x, 'avg_ga'))
+    upcoming['away_att'] = upcoming['teams.away.name'].apply(lambda x: get_stat(x, 'avg_gf'))
+    upcoming['home_def'] = upcoming['teams.home.name'].apply(lambda x: get_stat(x, 'avg_ga'))
 
+    return upcoming
+
+# --- 4. STRATÉGIE (VALUE BET) ---
 class StrategyEngine:
-    def __init__(self, bankroll=1000, kelly_fraction=0.25, min_value=0.05):
+    def __init__(self, connector, bankroll=1000):
+        self.connector = connector
         self.bankroll = bankroll
-        self.kelly_fraction = kelly_fraction
-        self.min_value = min_value
 
-    def get_real_odds(self, fixture_id):
-        # SIMULATION. En prod, remplacer par un appel API /odds
-        return {
-            "home": round(np.random.uniform(1.5, 3.0), 2),
-            "draw": round(np.random.uniform(3.0, 4.0), 2),
-            "away": round(np.random.uniform(2.5, 5.0), 2)
-        }
-
-    def calculate_kelly_stake(self, probability, odds):
-        if probability <= 0 or odds <= 1: return 0
+    def calculate_kelly(self, proba, odds):
+        if not odds or proba == 0: return 0
         b = odds - 1
-        q = 1 - probability
-        f = (b * probability - q) / b
-        return min(max(0, f * self.kelly_fraction), 0.05)
+        q = 1 - proba
+        f = (b * proba - q) / b
+        return max(0, f * 0.25) # Kelly Quart (Sécurité)
 
-    def analyze_matches(self, df, league_name):
-        opportunities = []
-        for idx, row in df.iterrows():
-            # Prédictions
-            exp_goals_h = (row['home_att_5'] + row['away_def_5']) / 2
-            exp_goals_a = (row['away_att_5'] + row['home_def_5']) / 2
-            p_h, p_d, p_a = calculate_poisson_probs(exp_goals_h, exp_goals_a)
-            
-            # Stratégie
-            odds = self.get_real_odds(idx)
-            edge = p_h - (1 / odds['home'])
-            
-            if edge > self.min_value:
-                stake_pct = self.calculate_kelly_stake(p_h, odds['home'])
-                amount = round(self.bankroll * stake_pct, 2)
-                if amount > 0:
-                    opportunities.append({
-                        "date": str(row['fixture.date']),
-                        "league": league_name,
-                        "match": f"{row['teams.home.name']} vs {row['teams.away.name']}",
-                        "bet_type": "Home Win",
-                        "model_prob": round(p_h * 100, 1),
-                        "bookmaker_odds": odds['home'],
-                        "value_edge": round(edge * 100, 1),
-                        "kelly_stake_pct": round(stake_pct * 100, 2),
-                        "suggested_wager": amount
-                    })
-        return opportunities
+    def analyze(self, df, league_name):
+        bets = []
+        # On ne prend que les matchs dans les 7 prochains jours pour éviter les cotes vides
+        now = pd.Timestamp.now(tz='UTC')
+        mask = (df['fixture.date'] > now) & (df['fixture.date'] < now + pd.Timedelta(days=7))
+        target_matches = df[mask]
 
-# --- 5. EXÉCUTION PRINCIPALE ---
+        print(f"Analyse de {len(target_matches)} matchs à venir ({league_name})...")
+
+        for idx, row in target_matches.iterrows():
+            # 1. Prédiction Poisson
+            lamb_h = (row['home_att'] + row['away_def']) / 2
+            lamb_a = (row['away_att'] + row['home_def']) / 2
+            
+            prob_home = 0
+            for h in range(6):
+                for a in range(6):
+                    if h > a: prob_home += poisson.pmf(h, lamb_h) * poisson.pmf(a, lamb_a)
+            
+            # Normalisation (approx)
+            prob_home = min(0.99, max(0.01, prob_home / 0.95)) # Ajustement simple
+
+            # 2. VRAIES COTES
+            odds = self.connector.get_real_odds(row['fixture.id'])
+            
+            if odds and odds['home']:
+                bookie_odd = float(odds['home'])
+                
+                # 3. Value ?
+                min_edge = 0.05 # 5% de marge
+                edge = prob_home - (1 / bookie_odd)
+                
+                if edge > min_edge:
+                    stake = self.calculate_kelly(prob_home, bookie_odd)
+                    amount = round(self.bankroll * stake, 2)
+                    
+                    if amount > 5: # Mise mini 5€
+                        bets.append({
+                            "date": str(row['fixture.date']),
+                            "league": league_name,
+                            "match": f"{row['teams.home.name']} vs {row['teams.away.name']}",
+                            "bet_type": "Home Win",
+                            "model_prob": round(prob_home * 100, 1),
+                            "bookmaker_odds": bookie_odd,
+                            "value_edge": round(edge * 100, 1),
+                            "suggested_wager": amount
+                        })
+        return bets
+
+# --- 5. MAIN ---
 if __name__ == "__main__":
-    print("--- Démarrage de l'Algo ---")
+    print("--- Démarrage Algo (Mode Production) ---")
     connector = FootballDataConnector()
-    strategy = StrategyEngine()
+    strategy = StrategyEngine(connector)
     all_bets = []
 
-    for name, id_league in LEAGUES.items():
-        print(f"Traitement : {name}")
-        # 1. Get Data
-        df = connector.get_season_fixtures(id_league, CURRENT_SEASON)
-        if df.empty: continue
+    for name, lid in LEAGUES.items():
+        df_raw = connector.get_season_fixtures(lid, CURRENT_SEASON)
+        # On ne traite que les matchs futurs
+        df_upcoming = process_and_split(df_raw)
         
-        # 2. Features
-        df_processed = process_features(df)
-        if df_processed.empty: continue
-        
-        # 3. Strategy
-        bets = strategy.analyze_matches(df_processed, name)
-        all_bets.extend(bets)
-        print(f"> {len(bets)} opportunités trouvées.")
+        if not df_upcoming.empty:
+            league_bets = strategy.analyze(df_upcoming, name)
+            all_bets.extend(league_bets)
+            print(f"> {name}: {len(league_bets)} Value Bets détectés.")
 
-    # 4. Export JSON
-    final_output = {
+    # Export
+    output = {
         "generated_at": datetime.now().isoformat(),
-        "strategy": "Poisson + Elo / Kelly 0.25",
-        "total_opportunities": len(all_bets),
-        "bets": all_bets
+        "bets": sorted(all_bets, key=lambda x: x['value_edge'], reverse=True)
     }
-
-    with open('predictions_anj.json', 'w') as f:
-        json.dump(final_output, f, indent=2)
     
-    print("\nSUCCÈS : Fichier predictions_anj.json généré.")
+    with open('predictions_anj.json', 'w') as f:
+        json.dump(output, f, indent=2)
+    
+    print("\n✅ Terminé. Fichier JSON mis à jour avec les cotes réelles.")
