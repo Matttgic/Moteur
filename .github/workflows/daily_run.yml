@@ -1,0 +1,39 @@
+name: Daily Betting Algo
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # Tourne tous les jours à 07h00 UTC (08h00 ou 09h00 France)
+  workflow_dispatch: # Permet de lancer manuellement pour tester
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Important pour sauvegarder le cache et le JSON
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Algorithm
+        env:
+          API_KEY: ${{ secrets.API_FOOTBALL_KEY }} # On injecte la clé ici
+        run: python main.py
+
+      - name: Commit and Push Data
+        # Sauvegarde le cache et les prédictions dans le repo
+        run: |
+          git config --global user.name 'GitHub Action Bot'
+          git config --global user.email 'action@github.com'
+          git add data_cache/ predictions_anj.json
+          git commit -m "Auto-update: Predictions & Cache" || exit 0
+          git push
