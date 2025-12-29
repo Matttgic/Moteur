@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-28T07:20:55.583247",
+  "generated_at": "2025-12-29T07:26:42.691383",
   "bets": [
     {
       "date": "2025-12-30 19:30:00+00:00",
@@ -7,9 +7,39 @@
       "match": "Burnley vs Newcastle",
       "bet_type": "Home Win",
       "model_prob": 33.0,
-      "bookmaker_odds": 4.7,
-      "value_edge": 11.7,
-      "suggested_wager": 37.12
+      "bookmaker_odds": 5.1,
+      "value_edge": 13.4,
+      "suggested_wager": 41.54
+    },
+    {
+      "date": "2026-01-04 15:00:00+00:00",
+      "league": "Premier League",
+      "match": "Fulham vs Liverpool",
+      "bet_type": "Home Win",
+      "model_prob": 33.9,
+      "bookmaker_odds": 4.0,
+      "value_edge": 8.9,
+      "suggested_wager": 29.82
+    },
+    {
+      "date": "2026-01-04 12:30:00+00:00",
+      "league": "Premier League",
+      "match": "Leeds vs Manchester United",
+      "bet_type": "Home Win",
+      "model_prob": 41.8,
+      "bookmaker_odds": 2.95,
+      "value_edge": 7.9,
+      "suggested_wager": 29.79
+    },
+    {
+      "date": "2026-01-04 17:30:00+00:00",
+      "league": "Premier League",
+      "match": "Manchester City vs Chelsea",
+      "bet_type": "Home Win",
+      "model_prob": 64.5,
+      "bookmaker_odds": 1.75,
+      "value_edge": 7.3,
+      "suggested_wager": 42.8
     },
     {
       "date": "2025-12-30 19:30:00+00:00",
@@ -27,9 +57,9 @@
       "match": "Brentford vs Tottenham",
       "bet_type": "Home Win",
       "model_prob": 48.5,
-      "bookmaker_odds": 2.33,
-      "value_edge": 5.6,
-      "suggested_wager": 24.34
+      "bookmaker_odds": 2.35,
+      "value_edge": 5.9,
+      "suggested_wager": 25.78
     }
   ]
 }
