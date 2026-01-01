@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-12-31T07:24:24.989263",
+  "generated_at": "2026-01-01T07:23:34.133048",
   "bets": [
     {
       "date": "2026-01-04 15:00:00+00:00",
@@ -7,19 +7,9 @@
       "match": "Fulham vs Liverpool",
       "bet_type": "Home Win",
       "model_prob": 33.9,
-      "bookmaker_odds": 4.1,
-      "value_edge": 9.6,
-      "suggested_wager": 31.6
-    },
-    {
-      "date": "2026-01-04 12:30:00+00:00",
-      "league": "Premier League",
-      "match": "Leeds vs Manchester United",
-      "bet_type": "Home Win",
-      "model_prob": 41.8,
-      "bookmaker_odds": 2.8,
-      "value_edge": 6.1,
-      "suggested_wager": 23.57
+      "bookmaker_odds": 4.0,
+      "value_edge": 8.9,
+      "suggested_wager": 29.82
     },
     {
       "date": "2026-01-03 17:30:00+00:00",
@@ -27,9 +17,9 @@
       "match": "Bournemouth vs Arsenal",
       "bet_type": "Home Win",
       "model_prob": 21.8,
-      "bookmaker_odds": 6.25,
-      "value_edge": 5.8,
-      "suggested_wager": 17.34
+      "bookmaker_odds": 6.1,
+      "value_edge": 5.4,
+      "suggested_wager": 16.25
     }
   ]
 }
