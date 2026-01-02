@@ -1,6 +1,16 @@
 {
-  "generated_at": "2026-01-01T07:23:34.133048",
+  "generated_at": "2026-01-02T07:24:57.833465",
   "bets": [
+    {
+      "date": "2026-01-07 19:30:00+00:00",
+      "league": "Premier League",
+      "match": "Fulham vs Chelsea",
+      "bet_type": "Home Win",
+      "model_prob": 44.0,
+      "bookmaker_odds": 3.45,
+      "value_edge": 15.0,
+      "suggested_wager": 52.92
+    },
     {
       "date": "2026-01-04 15:00:00+00:00",
       "league": "Premier League",
@@ -17,9 +27,19 @@
       "match": "Bournemouth vs Arsenal",
       "bet_type": "Home Win",
       "model_prob": 21.8,
-      "bookmaker_odds": 6.1,
-      "value_edge": 5.4,
-      "suggested_wager": 16.25
+      "bookmaker_odds": 6.25,
+      "value_edge": 5.8,
+      "suggested_wager": 17.34
+    },
+    {
+      "date": "2026-01-07 20:15:00+00:00",
+      "league": "Premier League",
+      "match": "Burnley vs Manchester United",
+      "bet_type": "Home Win",
+      "model_prob": 26.6,
+      "bookmaker_odds": 4.8,
+      "value_edge": 5.8,
+      "suggested_wager": 18.21
     }
   ]
 }
