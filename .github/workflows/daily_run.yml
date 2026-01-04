@@ -2,7 +2,7 @@ name: Daily Betting Algo
 
 on:
   schedule:
-    - cron: '0 7 * * *' # Tourne tous les jours à 07h00 UTC
+    - cron: '0 7 * * *' # 07h00 UTC
   workflow_dispatch:
 
 jobs:
@@ -34,14 +34,12 @@ jobs:
           git config --global user.name 'GitHub Action Bot'
           git config --global user.email 'action@github.com'
           
-          # 1. On ajoute et on commit D'ABORD les fichiers générés
-          # Cela "protège" le travail du robot avant de tenter la mise à jour
-          git add data_cache/ predictions_anj.json
+          # Force l'ajout du cache (même si ignoré) et du BON fichier json
+          git add -f data_cache/
+          git add predictions_top5.json
+          
+          # Commit (évite l'erreur si rien n'a changé avec allow-empty)
           git commit -m "Auto-update: Predictions & Cache" || echo "Rien à commiter"
           
-          # 2. MAINTENANT on peut récupérer tes modifications (ton main.py)
-          # Le --rebase va placer le commit du robot juste APRES tes modifications
           git pull origin main --rebase
-          
-          # 3. On envoie le tout
           git push
