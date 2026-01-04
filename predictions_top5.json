@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-04T01:51:35.694551",
-  "total_bets": 6,
+  "generated_at": "2026-01-04T07:22:07.536762",
+  "total_bets": 5,
   "bets": [
     {
       "date": "2026-01-07 19:30",
@@ -28,9 +28,9 @@
       "match": "Lecce vs AS Roma",
       "bet_type": "Home Win",
       "model_prob_pct": 27.6,
-      "bookmaker_odds": 5.6,
-      "value_edge_pct": 9.7,
-      "suggested_wager": 14.79
+      "bookmaker_odds": 5.5,
+      "value_edge_pct": 9.4,
+      "suggested_wager": 14.36
     },
     {
       "date": "2026-01-04 15:00",
@@ -38,9 +38,9 @@
       "match": "Fulham vs Liverpool",
       "bet_type": "Home Win",
       "model_prob_pct": 32.7,
-      "bookmaker_odds": 4.0,
-      "value_edge_pct": 7.7,
-      "suggested_wager": 12.86
+      "bookmaker_odds": 3.9,
+      "value_edge_pct": 7.1,
+      "suggested_wager": 11.89
     },
     {
       "date": "2026-01-04 17:30",
@@ -48,19 +48,9 @@
       "match": "Mallorca vs Girona",
       "bet_type": "Home Win",
       "model_prob_pct": 51.2,
-      "bookmaker_odds": 2.23,
-      "value_edge_pct": 6.4,
-      "suggested_wager": 14.43
-    },
-    {
-      "date": "2026-01-10 14:30",
-      "league": "Bundesliga (GER)",
-      "match": "Union Berlin vs FSV Mainz 05",
-      "bet_type": "Home Win",
-      "model_prob_pct": 51.2,
-      "bookmaker_odds": 2.2,
-      "value_edge_pct": 5.7,
-      "suggested_wager": 13.09
+      "bookmaker_odds": 2.18,
+      "value_edge_pct": 5.3,
+      "suggested_wager": 12.33
     }
   ]
 }
