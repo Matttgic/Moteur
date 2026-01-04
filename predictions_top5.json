@@ -1,0 +1,66 @@
+{
+  "generated_at": "2026-01-04T01:51:35.694551",
+  "total_bets": 6,
+  "bets": [
+    {
+      "date": "2026-01-07 19:30",
+      "league": "Premier League (ENG)",
+      "match": "Fulham vs Chelsea",
+      "bet_type": "Home Win",
+      "model_prob_pct": 42.4,
+      "bookmaker_odds": 3.4,
+      "value_edge_pct": 13.0,
+      "suggested_wager": 23.05
+    },
+    {
+      "date": "2026-01-06 19:45",
+      "league": "Serie A (ITA)",
+      "match": "Sassuolo vs Juventus",
+      "bet_type": "Home Win",
+      "model_prob_pct": 31.4,
+      "bookmaker_odds": 4.8,
+      "value_edge_pct": 10.6,
+      "suggested_wager": 16.68
+    },
+    {
+      "date": "2026-01-06 17:00",
+      "league": "Serie A (ITA)",
+      "match": "Lecce vs AS Roma",
+      "bet_type": "Home Win",
+      "model_prob_pct": 27.6,
+      "bookmaker_odds": 5.6,
+      "value_edge_pct": 9.7,
+      "suggested_wager": 14.79
+    },
+    {
+      "date": "2026-01-04 15:00",
+      "league": "Premier League (ENG)",
+      "match": "Fulham vs Liverpool",
+      "bet_type": "Home Win",
+      "model_prob_pct": 32.7,
+      "bookmaker_odds": 4.0,
+      "value_edge_pct": 7.7,
+      "suggested_wager": 12.86
+    },
+    {
+      "date": "2026-01-04 17:30",
+      "league": "La Liga (ESP)",
+      "match": "Mallorca vs Girona",
+      "bet_type": "Home Win",
+      "model_prob_pct": 51.2,
+      "bookmaker_odds": 2.23,
+      "value_edge_pct": 6.4,
+      "suggested_wager": 14.43
+    },
+    {
+      "date": "2026-01-10 14:30",
+      "league": "Bundesliga (GER)",
+      "match": "Union Berlin vs FSV Mainz 05",
+      "bet_type": "Home Win",
+      "model_prob_pct": 51.2,
+      "bookmaker_odds": 2.2,
+      "value_edge_pct": 5.7,
+      "suggested_wager": 13.09
+    }
+  ]
+}
