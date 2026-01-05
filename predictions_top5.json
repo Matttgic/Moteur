@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-04T07:22:07.536762",
-  "total_bets": 5,
+  "generated_at": "2026-01-05T07:29:24.027790",
+  "total_bets": 3,
   "bets": [
     {
       "date": "2026-01-07 19:30",
@@ -28,29 +28,9 @@
       "match": "Lecce vs AS Roma",
       "bet_type": "Home Win",
       "model_prob_pct": 27.6,
-      "bookmaker_odds": 5.5,
-      "value_edge_pct": 9.4,
-      "suggested_wager": 14.36
-    },
-    {
-      "date": "2026-01-04 15:00",
-      "league": "Premier League (ENG)",
-      "match": "Fulham vs Liverpool",
-      "bet_type": "Home Win",
-      "model_prob_pct": 32.7,
-      "bookmaker_odds": 3.9,
-      "value_edge_pct": 7.1,
-      "suggested_wager": 11.89
-    },
-    {
-      "date": "2026-01-04 17:30",
-      "league": "La Liga (ESP)",
-      "match": "Mallorca vs Girona",
-      "bet_type": "Home Win",
-      "model_prob_pct": 51.2,
-      "bookmaker_odds": 2.18,
-      "value_edge_pct": 5.3,
-      "suggested_wager": 12.33
+      "bookmaker_odds": 5.25,
+      "value_edge_pct": 8.5,
+      "suggested_wager": 13.17
     }
   ]
 }
