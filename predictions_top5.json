@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-06T07:26:35.898828",
-  "total_bets": 3,
+  "generated_at": "2026-01-07T07:25:46.556695",
+  "total_bets": 2,
   "bets": [
     {
       "date": "2026-01-07 19:30",
@@ -8,29 +8,19 @@
       "match": "Fulham vs Chelsea",
       "bet_type": "Home Win",
       "model_prob_pct": 42.4,
-      "bookmaker_odds": 3.45,
-      "value_edge_pct": 13.4,
-      "suggested_wager": 23.66
+      "bookmaker_odds": 3.5,
+      "value_edge_pct": 13.9,
+      "suggested_wager": 24.24
     },
     {
-      "date": "2026-01-06 19:45",
-      "league": "Serie A (ITA)",
-      "match": "Sassuolo vs Juventus",
+      "date": "2026-01-07 20:15",
+      "league": "Premier League (ENG)",
+      "match": "Burnley vs Manchester United",
       "bet_type": "Home Win",
-      "model_prob_pct": 31.4,
-      "bookmaker_odds": 5.4,
-      "value_edge_pct": 12.9,
-      "suggested_wager": 19.76
-    },
-    {
-      "date": "2026-01-06 17:00",
-      "league": "Serie A (ITA)",
-      "match": "Lecce vs AS Roma",
-      "bet_type": "Home Win",
-      "model_prob_pct": 27.6,
-      "bookmaker_odds": 5.6,
-      "value_edge_pct": 9.7,
-      "suggested_wager": 14.79
+      "model_prob_pct": 25.4,
+      "bookmaker_odds": 5.0,
+      "value_edge_pct": 5.4,
+      "suggested_wager": 8.43
     }
   ]
 }
