@@ -1,26 +1,5 @@
 {
-  "generated_at": "2026-01-07T07:25:46.556695",
-  "total_bets": 2,
-  "bets": [
-    {
-      "date": "2026-01-07 19:30",
-      "league": "Premier League (ENG)",
-      "match": "Fulham vs Chelsea",
-      "bet_type": "Home Win",
-      "model_prob_pct": 42.4,
-      "bookmaker_odds": 3.5,
-      "value_edge_pct": 13.9,
-      "suggested_wager": 24.24
-    },
-    {
-      "date": "2026-01-07 20:15",
-      "league": "Premier League (ENG)",
-      "match": "Burnley vs Manchester United",
-      "bet_type": "Home Win",
-      "model_prob_pct": 25.4,
-      "bookmaker_odds": 5.0,
-      "value_edge_pct": 5.4,
-      "suggested_wager": 8.43
-    }
-  ]
+  "generated_at": "2026-01-08T07:25:22.087393",
+  "total_bets": 0,
+  "bets": []
 }
