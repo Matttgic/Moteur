@@ -1,5 +1,16 @@
 {
-  "generated_at": "2026-01-09T07:26:37.377048",
-  "total_bets": 0,
-  "bets": []
+  "generated_at": "2026-01-10T07:20:02.955269",
+  "total_bets": 1,
+  "bets": [
+    {
+      "date": "2026-01-15 17:30",
+      "league": "Serie A (ITA)",
+      "match": "Verona vs Bologna",
+      "bet_type": "Home Win",
+      "model_prob_pct": 32.9,
+      "bookmaker_odds": 3.65,
+      "value_edge_pct": 5.5,
+      "suggested_wager": 9.41
+    }
+  ]
 }
