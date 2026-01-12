@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-11T07:21:44.738824",
-  "total_bets": 6,
+  "generated_at": "2026-01-12T07:28:16.009185",
+  "total_bets": 7,
   "bets": [
     {
       "date": "2026-01-17 15:15",
@@ -23,14 +23,24 @@
       "suggested_wager": 26.29
     },
     {
+      "date": "2026-01-18 17:30",
+      "league": "La Liga (ESP)",
+      "match": "Celta Vigo vs Rayo Vallecano",
+      "bet_type": "Home Win",
+      "model_prob_pct": 64.9,
+      "bookmaker_odds": 2.1,
+      "value_edge_pct": 17.3,
+      "suggested_wager": 41.27
+    },
+    {
       "date": "2026-01-17 18:00",
       "league": "Ligue 1 (FRA)",
       "match": "Toulouse vs Nice",
       "bet_type": "Home Win",
       "model_prob_pct": 67.5,
-      "bookmaker_odds": 1.89,
-      "value_edge_pct": 14.6,
-      "suggested_wager": 38.73
+      "bookmaker_odds": 1.88,
+      "value_edge_pct": 14.3,
+      "suggested_wager": 38.21
     },
     {
       "date": "2026-01-17 15:00",
@@ -38,9 +48,9 @@
       "match": "Sunderland vs Crystal Palace",
       "bet_type": "Home Win",
       "model_prob_pct": 46.3,
-      "bookmaker_odds": 2.75,
-      "value_edge_pct": 10.0,
-      "suggested_wager": 19.58
+      "bookmaker_odds": 2.65,
+      "value_edge_pct": 8.6,
+      "suggested_wager": 17.26
     },
     {
       "date": "2026-01-17 17:30",
