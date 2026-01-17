@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-16T07:25:52.153487",
-  "total_bets": 9,
+  "generated_at": "2026-01-17T07:20:02.722719",
+  "total_bets": 8,
   "bets": [
     {
       "date": "2026-01-17 15:15",
@@ -8,9 +8,9 @@
       "match": "Mallorca vs Athletic Club",
       "bet_type": "Home Win",
       "model_prob_pct": 51.2,
-      "bookmaker_odds": 3.65,
-      "value_edge_pct": 23.8,
-      "suggested_wager": 40.92
+      "bookmaker_odds": 3.7,
+      "value_edge_pct": 24.1,
+      "suggested_wager": 41.35
     },
     {
       "date": "2026-01-17 20:05",
@@ -18,9 +18,9 @@
       "match": "Angers vs Marseille",
       "bet_type": "Home Win",
       "model_prob_pct": 34.8,
-      "bookmaker_odds": 5.6,
-      "value_edge_pct": 16.9,
-      "suggested_wager": 25.73
+      "bookmaker_odds": 6.0,
+      "value_edge_pct": 18.1,
+      "suggested_wager": 27.15
     },
     {
       "date": "2026-01-18 17:30",
@@ -28,9 +28,9 @@
       "match": "Celta Vigo vs Rayo Vallecano",
       "bet_type": "Home Win",
       "model_prob_pct": 64.9,
-      "bookmaker_odds": 2.04,
-      "value_edge_pct": 15.9,
-      "suggested_wager": 38.97
+      "bookmaker_odds": 2.02,
+      "value_edge_pct": 15.4,
+      "suggested_wager": 38.14
     },
     {
       "date": "2026-01-17 19:45",
@@ -38,9 +38,9 @@
       "match": "Cagliari vs Juventus",
       "bet_type": "Home Win",
       "model_prob_pct": 28.6,
-      "bookmaker_odds": 7.0,
-      "value_edge_pct": 14.3,
-      "suggested_wager": 20.92
+      "bookmaker_odds": 7.5,
+      "value_edge_pct": 15.3,
+      "suggested_wager": 22.07
     },
     {
       "date": "2026-01-17 18:00",
@@ -53,34 +53,24 @@
       "suggested_wager": 37.68
     },
     {
-      "date": "2026-01-16 19:45",
-      "league": "Serie A (ITA)",
-      "match": "Pisa vs Atalanta",
-      "bet_type": "Home Win",
-      "model_prob_pct": 24.6,
-      "bookmaker_odds": 6.4,
-      "value_edge_pct": 9.0,
-      "suggested_wager": 13.3
-    },
-    {
-      "date": "2026-01-17 15:00",
-      "league": "Premier League (ENG)",
-      "match": "Sunderland vs Crystal Palace",
-      "bet_type": "Home Win",
-      "model_prob_pct": 46.3,
-      "bookmaker_odds": 2.65,
-      "value_edge_pct": 8.6,
-      "suggested_wager": 17.26
-    },
-    {
       "date": "2026-01-17 17:30",
       "league": "Premier League (ENG)",
       "match": "Nottingham Forest vs Arsenal",
       "bet_type": "Home Win",
       "model_prob_pct": 24.2,
-      "bookmaker_odds": 6.4,
-      "value_edge_pct": 8.5,
-      "suggested_wager": 12.65
+      "bookmaker_odds": 7.0,
+      "value_edge_pct": 9.9,
+      "suggested_wager": 14.41
+    },
+    {
+      "date": "2026-01-23 19:00",
+      "league": "Ligue 1 (FRA)",
+      "match": "Auxerre vs Paris Saint Germain",
+      "bet_type": "Home Win",
+      "model_prob_pct": 19.9,
+      "bookmaker_odds": 9.0,
+      "value_edge_pct": 8.8,
+      "suggested_wager": 12.4
     },
     {
       "date": "2026-01-18 17:00",
@@ -88,9 +78,9 @@
       "match": "Torino vs AS Roma",
       "bet_type": "Home Win",
       "model_prob_pct": 33.4,
-      "bookmaker_odds": 3.6,
-      "value_edge_pct": 5.6,
-      "suggested_wager": 9.65
+      "bookmaker_odds": 3.95,
+      "value_edge_pct": 8.0,
+      "suggested_wager": 13.45
     }
   ]
 }
