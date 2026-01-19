@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-18T07:20:54.546324",
-  "total_bets": 6,
+  "generated_at": "2026-01-19T07:29:56.157528",
+  "total_bets": 8,
   "bets": [
     {
       "date": "2026-01-24 18:00",
@@ -13,14 +13,24 @@
       "suggested_wager": 23.51
     },
     {
-      "date": "2026-01-18 17:30",
+      "date": "2026-01-25 17:00",
       "league": "La Liga (ESP)",
-      "match": "Celta Vigo vs Rayo Vallecano",
+      "match": "Sevilla vs Athletic Club",
       "bet_type": "Home Win",
-      "model_prob_pct": 64.9,
-      "bookmaker_odds": 1.91,
-      "value_edge_pct": 12.6,
-      "suggested_wager": 32.94
+      "model_prob_pct": 46.1,
+      "bookmaker_odds": 3.05,
+      "value_edge_pct": 13.3,
+      "suggested_wager": 24.73
+    },
+    {
+      "date": "2026-01-25 14:00",
+      "league": "Ligue 1 (FRA)",
+      "match": "Nantes vs Nice",
+      "bet_type": "Home Win",
+      "model_prob_pct": 44.5,
+      "bookmaker_odds": 3.15,
+      "value_edge_pct": 12.8,
+      "suggested_wager": 23.37
     },
     {
       "date": "2026-01-24 15:00",
@@ -31,6 +41,16 @@
       "bookmaker_odds": 4.0,
       "value_edge_pct": 11.8,
       "suggested_wager": 19.61
+    },
+    {
+      "date": "2026-01-25 17:00",
+      "league": "La Liga (ESP)",
+      "match": "Villarreal vs Real Madrid",
+      "bet_type": "Home Win",
+      "model_prob_pct": 37.3,
+      "bookmaker_odds": 3.55,
+      "value_edge_pct": 9.1,
+      "suggested_wager": 15.89
     },
     {
       "date": "2026-01-24 15:00",
@@ -53,14 +73,14 @@
       "suggested_wager": 12.4
     },
     {
-      "date": "2026-01-18 17:00",
-      "league": "Serie A (ITA)",
-      "match": "Torino vs AS Roma",
+      "date": "2026-01-25 14:30",
+      "league": "Bundesliga (GER)",
+      "match": "Borussia M\u00f6nchengladbach vs VfB Stuttgart",
       "bet_type": "Home Win",
-      "model_prob_pct": 33.4,
-      "bookmaker_odds": 4.0,
-      "value_edge_pct": 8.4,
-      "suggested_wager": 13.92
+      "model_prob_pct": 41.9,
+      "bookmaker_odds": 3.0,
+      "value_edge_pct": 8.5,
+      "suggested_wager": 16.0
     }
   ]
 }
