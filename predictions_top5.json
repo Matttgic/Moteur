@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-01-20T07:28:58.843149",
+  "generated_at": "2026-01-21T07:29:39.643518",
   "total_bets": 9,
   "bets": [
-    {
-      "date": "2026-01-24 18:00",
-      "league": "Ligue 1 (FRA)",
-      "match": "Le Havre vs Monaco",
-      "bet_type": "Home Win",
-      "model_prob_pct": 39.9,
-      "bookmaker_odds": 3.7,
-      "value_edge_pct": 12.9,
-      "suggested_wager": 22.04
-    },
     {
       "date": "2026-01-25 17:00",
       "league": "La Liga (ESP)",
       "match": "Sevilla vs Athletic Club",
       "bet_type": "Home Win",
       "model_prob_pct": 46.1,
-      "bookmaker_odds": 3.0,
-      "value_edge_pct": 12.8,
-      "suggested_wager": 23.91
+      "bookmaker_odds": 3.05,
+      "value_edge_pct": 13.3,
+      "suggested_wager": 24.73
+    },
+    {
+      "date": "2026-01-24 18:00",
+      "league": "Ligue 1 (FRA)",
+      "match": "Le Havre vs Monaco",
+      "bet_type": "Home Win",
+      "model_prob_pct": 39.9,
+      "bookmaker_odds": 3.75,
+      "value_edge_pct": 13.2,
+      "suggested_wager": 22.55
     },
     {
       "date": "2026-01-25 14:00",
@@ -48,9 +48,9 @@
       "match": "Fulham vs Brighton",
       "bet_type": "Home Win",
       "model_prob_pct": 48.9,
-      "bookmaker_odds": 2.5,
-      "value_edge_pct": 8.9,
-      "suggested_wager": 18.62
+      "bookmaker_odds": 2.48,
+      "value_edge_pct": 8.6,
+      "suggested_wager": 18.05
     },
     {
       "date": "2026-01-25 14:30",
@@ -61,16 +61,6 @@
       "bookmaker_odds": 3.0,
       "value_edge_pct": 8.5,
       "suggested_wager": 16.0
-    },
-    {
-      "date": "2026-01-25 17:00",
-      "league": "La Liga (ESP)",
-      "match": "Villarreal vs Real Madrid",
-      "bet_type": "Home Win",
-      "model_prob_pct": 37.3,
-      "bookmaker_odds": 3.45,
-      "value_edge_pct": 8.3,
-      "suggested_wager": 14.63
     },
     {
       "date": "2026-01-23 19:00",
@@ -91,6 +81,16 @@
       "bookmaker_odds": 2.75,
       "value_edge_pct": 7.9,
       "suggested_wager": 15.6
+    },
+    {
+      "date": "2026-01-25 17:00",
+      "league": "La Liga (ESP)",
+      "match": "Villarreal vs Real Madrid",
+      "bet_type": "Home Win",
+      "model_prob_pct": 37.3,
+      "bookmaker_odds": 3.25,
+      "value_edge_pct": 6.5,
+      "suggested_wager": 11.79
     }
   ]
 }
