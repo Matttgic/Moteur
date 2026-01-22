@@ -1,17 +1,7 @@
 {
-  "generated_at": "2026-01-21T07:29:39.643518",
+  "generated_at": "2026-01-22T07:28:13.520500",
   "total_bets": 9,
   "bets": [
-    {
-      "date": "2026-01-25 17:00",
-      "league": "La Liga (ESP)",
-      "match": "Sevilla vs Athletic Club",
-      "bet_type": "Home Win",
-      "model_prob_pct": 46.1,
-      "bookmaker_odds": 3.05,
-      "value_edge_pct": 13.3,
-      "suggested_wager": 24.73
-    },
     {
       "date": "2026-01-24 18:00",
       "league": "Ligue 1 (FRA)",
@@ -21,6 +11,16 @@
       "bookmaker_odds": 3.75,
       "value_edge_pct": 13.2,
       "suggested_wager": 22.55
+    },
+    {
+      "date": "2026-01-25 17:00",
+      "league": "La Liga (ESP)",
+      "match": "Sevilla vs Athletic Club",
+      "bet_type": "Home Win",
+      "model_prob_pct": 46.1,
+      "bookmaker_odds": 2.95,
+      "value_edge_pct": 12.2,
+      "suggested_wager": 23.04
     },
     {
       "date": "2026-01-25 14:00",
@@ -88,9 +88,9 @@
       "match": "Villarreal vs Real Madrid",
       "bet_type": "Home Win",
       "model_prob_pct": 37.3,
-      "bookmaker_odds": 3.25,
-      "value_edge_pct": 6.5,
-      "suggested_wager": 11.79
+      "bookmaker_odds": 3.3,
+      "value_edge_pct": 7.0,
+      "suggested_wager": 12.54
     }
   ]
 }
