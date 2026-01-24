@@ -1,26 +1,26 @@
 {
-  "generated_at": "2026-01-23T07:26:37.914041",
-  "total_bets": 9,
+  "generated_at": "2026-01-24T07:20:52.065218",
+  "total_bets": 8,
   "bets": [
-    {
-      "date": "2026-01-25 17:00",
-      "league": "La Liga (ESP)",
-      "match": "Sevilla vs Athletic Club",
-      "bet_type": "Home Win",
-      "model_prob_pct": 46.1,
-      "bookmaker_odds": 2.95,
-      "value_edge_pct": 12.2,
-      "suggested_wager": 23.04
-    },
     {
       "date": "2026-01-24 18:00",
       "league": "Ligue 1 (FRA)",
       "match": "Le Havre vs Monaco",
       "bet_type": "Home Win",
       "model_prob_pct": 39.9,
-      "bookmaker_odds": 3.5,
-      "value_edge_pct": 11.3,
-      "suggested_wager": 19.82
+      "bookmaker_odds": 3.8,
+      "value_edge_pct": 13.6,
+      "suggested_wager": 23.04
+    },
+    {
+      "date": "2026-01-25 17:00",
+      "league": "La Liga (ESP)",
+      "match": "Sevilla vs Athletic Club",
+      "bet_type": "Home Win",
+      "model_prob_pct": 46.1,
+      "bookmaker_odds": 2.9,
+      "value_edge_pct": 11.6,
+      "suggested_wager": 22.13
     },
     {
       "date": "2026-01-25 14:00",
@@ -35,42 +35,32 @@
     {
       "date": "2026-01-24 15:00",
       "league": "Premier League (ENG)",
-      "match": "Burnley vs Tottenham",
+      "match": "Fulham vs Brighton",
       "bet_type": "Home Win",
-      "model_prob_pct": 36.8,
-      "bookmaker_odds": 3.75,
-      "value_edge_pct": 10.1,
-      "suggested_wager": 17.21
+      "model_prob_pct": 48.9,
+      "bookmaker_odds": 2.6,
+      "value_edge_pct": 10.5,
+      "suggested_wager": 21.28
+    },
+    {
+      "date": "2026-01-25 17:00",
+      "league": "La Liga (ESP)",
+      "match": "Villarreal vs Real Madrid",
+      "bet_type": "Home Win",
+      "model_prob_pct": 37.3,
+      "bookmaker_odds": 3.7,
+      "value_edge_pct": 10.3,
+      "suggested_wager": 17.59
     },
     {
       "date": "2026-01-24 15:00",
       "league": "Premier League (ENG)",
-      "match": "Fulham vs Brighton",
+      "match": "Burnley vs Tottenham",
       "bet_type": "Home Win",
-      "model_prob_pct": 48.9,
-      "bookmaker_odds": 2.55,
-      "value_edge_pct": 9.7,
-      "suggested_wager": 19.99
-    },
-    {
-      "date": "2026-01-23 19:00",
-      "league": "Ligue 1 (FRA)",
-      "match": "Auxerre vs Paris Saint Germain",
-      "bet_type": "Home Win",
-      "model_prob_pct": 19.9,
-      "bookmaker_odds": 9.0,
-      "value_edge_pct": 8.8,
-      "suggested_wager": 12.4
-    },
-    {
-      "date": "2026-01-25 14:30",
-      "league": "Bundesliga (GER)",
-      "match": "Borussia M\u00f6nchengladbach vs VfB Stuttgart",
-      "bet_type": "Home Win",
-      "model_prob_pct": 41.9,
-      "bookmaker_odds": 2.95,
-      "value_edge_pct": 8.0,
-      "suggested_wager": 15.07
+      "model_prob_pct": 36.8,
+      "bookmaker_odds": 3.65,
+      "value_edge_pct": 9.4,
+      "suggested_wager": 16.13
     },
     {
       "date": "2026-01-26 19:45",
@@ -83,14 +73,14 @@
       "suggested_wager": 15.6
     },
     {
-      "date": "2026-01-25 17:00",
-      "league": "La Liga (ESP)",
-      "match": "Villarreal vs Real Madrid",
+      "date": "2026-01-25 14:30",
+      "league": "Bundesliga (GER)",
+      "match": "Borussia M\u00f6nchengladbach vs VfB Stuttgart",
       "bet_type": "Home Win",
-      "model_prob_pct": 37.3,
-      "bookmaker_odds": 3.25,
-      "value_edge_pct": 6.5,
-      "suggested_wager": 11.79
+      "model_prob_pct": 41.9,
+      "bookmaker_odds": 2.88,
+      "value_edge_pct": 7.1,
+      "suggested_wager": 13.68
     }
   ]
 }
