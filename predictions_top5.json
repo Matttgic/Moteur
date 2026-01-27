@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-01-26T07:28:54.050862",
-  "total_bets": 7,
+  "generated_at": "2026-01-27T07:28:42.546055",
+  "total_bets": 6,
   "bets": [
     {
       "date": "2026-01-31 15:00",
@@ -53,24 +53,14 @@
       "suggested_wager": 12.99
     },
     {
-      "date": "2026-01-26 19:45",
-      "league": "Serie A (ITA)",
-      "match": "Verona vs Udinese",
+      "date": "2026-01-31 18:00",
+      "league": "Ligue 1 (FRA)",
+      "match": "Lorient vs Nantes",
       "bet_type": "Home Win",
-      "model_prob_pct": 44.3,
-      "bookmaker_odds": 2.8,
-      "value_edge_pct": 8.6,
-      "suggested_wager": 16.71
-    },
-    {
-      "date": "2026-02-01 17:00",
-      "league": "La Liga (ESP)",
-      "match": "Espanyol vs Alaves",
-      "bet_type": "Home Win",
-      "model_prob_pct": 56.5,
-      "bookmaker_odds": 1.95,
-      "value_edge_pct": 5.2,
-      "suggested_wager": 13.34
+      "model_prob_pct": 61.2,
+      "bookmaker_odds": 1.81,
+      "value_edge_pct": 6.0,
+      "suggested_wager": 16.76
     }
   ]
 }
