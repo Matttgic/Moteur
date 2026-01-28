@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-27T07:28:42.546055",
+  "generated_at": "2026-01-28T07:27:08.207960",
   "total_bets": 6,
   "bets": [
     {
@@ -8,9 +8,9 @@
       "match": "Leeds vs Arsenal",
       "bet_type": "Home Win",
       "model_prob_pct": 38.5,
-      "bookmaker_odds": 6.4,
-      "value_edge_pct": 22.9,
-      "suggested_wager": 33.88
+      "bookmaker_odds": 6.75,
+      "value_edge_pct": 23.7,
+      "suggested_wager": 34.74
     },
     {
       "date": "2026-02-01 16:15",
