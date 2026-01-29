@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-28T07:27:08.207960",
+  "generated_at": "2026-01-29T07:40:35.947509",
   "total_bets": 6,
   "bets": [
     {
@@ -8,9 +8,9 @@
       "match": "Leeds vs Arsenal",
       "bet_type": "Home Win",
       "model_prob_pct": 38.5,
-      "bookmaker_odds": 6.75,
-      "value_edge_pct": 23.7,
-      "suggested_wager": 34.74
+      "bookmaker_odds": 6.5,
+      "value_edge_pct": 23.1,
+      "suggested_wager": 34.13
     },
     {
       "date": "2026-02-01 16:15",
@@ -33,6 +33,16 @@
       "suggested_wager": 14.01
     },
     {
+      "date": "2026-02-01 14:00",
+      "league": "Serie A (ITA)",
+      "match": "Parma vs Juventus",
+      "bet_type": "Home Win",
+      "model_prob_pct": 23.2,
+      "bookmaker_odds": 7.5,
+      "value_edge_pct": 9.9,
+      "suggested_wager": 14.22
+    },
+    {
       "date": "2026-02-01 17:00",
       "league": "La Liga (ESP)",
       "match": "Elche vs Barcelona",
@@ -43,24 +53,14 @@
       "suggested_wager": 13.08
     },
     {
-      "date": "2026-02-01 14:00",
-      "league": "Serie A (ITA)",
-      "match": "Parma vs Juventus",
-      "bet_type": "Home Win",
-      "model_prob_pct": 23.2,
-      "bookmaker_odds": 7.0,
-      "value_edge_pct": 8.9,
-      "suggested_wager": 12.99
-    },
-    {
       "date": "2026-01-31 18:00",
       "league": "Ligue 1 (FRA)",
       "match": "Lorient vs Nantes",
       "bet_type": "Home Win",
       "model_prob_pct": 61.2,
-      "bookmaker_odds": 1.81,
-      "value_edge_pct": 6.0,
-      "suggested_wager": 16.76
+      "bookmaker_odds": 1.79,
+      "value_edge_pct": 5.4,
+      "suggested_wager": 15.24
     }
   ]
 }
