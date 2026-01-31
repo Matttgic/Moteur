@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-30T07:40:25.781798",
+  "generated_at": "2026-01-31T07:29:15.210864",
   "total_bets": 6,
   "bets": [
     {
@@ -8,9 +8,9 @@
       "match": "Leeds vs Arsenal",
       "bet_type": "Home Win",
       "model_prob_pct": 38.5,
-      "bookmaker_odds": 6.75,
-      "value_edge_pct": 23.7,
-      "suggested_wager": 34.74
+      "bookmaker_odds": 6.1,
+      "value_edge_pct": 22.1,
+      "suggested_wager": 33.04
     },
     {
       "date": "2026-02-01 16:15",
@@ -18,19 +18,9 @@
       "match": "Angers vs Metz",
       "bet_type": "Home Win",
       "model_prob_pct": 60.1,
-      "bookmaker_odds": 2.1,
-      "value_edge_pct": 12.5,
-      "suggested_wager": 29.82
-    },
-    {
-      "date": "2026-02-01 14:00",
-      "league": "Serie A (ITA)",
-      "match": "Cremonese vs Inter",
-      "bet_type": "Home Win",
-      "model_prob_pct": 20.1,
-      "bookmaker_odds": 11.0,
-      "value_edge_pct": 11.0,
-      "suggested_wager": 15.12
+      "bookmaker_odds": 2.08,
+      "value_edge_pct": 12.0,
+      "suggested_wager": 28.99
     },
     {
       "date": "2026-02-01 17:00",
@@ -38,9 +28,9 @@
       "match": "Elche vs Barcelona",
       "bet_type": "Home Win",
       "model_prob_pct": 23.3,
-      "bookmaker_odds": 7.5,
-      "value_edge_pct": 9.9,
-      "suggested_wager": 14.31
+      "bookmaker_odds": 8.0,
+      "value_edge_pct": 10.8,
+      "suggested_wager": 15.36
     },
     {
       "date": "2026-02-01 14:00",
@@ -48,9 +38,19 @@
       "match": "Parma vs Juventus",
       "bet_type": "Home Win",
       "model_prob_pct": 23.2,
-      "bookmaker_odds": 7.5,
-      "value_edge_pct": 9.9,
-      "suggested_wager": 14.22
+      "bookmaker_odds": 8.0,
+      "value_edge_pct": 10.7,
+      "suggested_wager": 15.28
+    },
+    {
+      "date": "2026-02-01 14:00",
+      "league": "Serie A (ITA)",
+      "match": "Cremonese vs Inter",
+      "bet_type": "Home Win",
+      "model_prob_pct": 20.1,
+      "bookmaker_odds": 10.5,
+      "value_edge_pct": 10.6,
+      "suggested_wager": 14.59
     },
     {
       "date": "2026-01-31 18:00",
