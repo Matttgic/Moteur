@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-01-31T07:29:15.210864",
-  "total_bets": 6,
+  "generated_at": "2026-02-01T07:37:33.052055",
+  "total_bets": 7,
   "bets": [
     {
-      "date": "2026-01-31 15:00",
-      "league": "Premier League (ENG)",
-      "match": "Leeds vs Arsenal",
+      "date": "2026-02-07 14:30",
+      "league": "Bundesliga (GER)",
+      "match": "FC St. Pauli vs VfB Stuttgart",
       "bet_type": "Home Win",
-      "model_prob_pct": 38.5,
-      "bookmaker_odds": 6.1,
-      "value_edge_pct": 22.1,
-      "suggested_wager": 33.04
+      "model_prob_pct": 37.3,
+      "bookmaker_odds": 4.2,
+      "value_edge_pct": 13.5,
+      "suggested_wager": 22.13
     },
     {
       "date": "2026-02-01 16:15",
@@ -28,9 +28,19 @@
       "match": "Elche vs Barcelona",
       "bet_type": "Home Win",
       "model_prob_pct": 23.3,
-      "bookmaker_odds": 8.0,
-      "value_edge_pct": 10.8,
-      "suggested_wager": 15.36
+      "bookmaker_odds": 8.5,
+      "value_edge_pct": 11.5,
+      "suggested_wager": 16.28
+    },
+    {
+      "date": "2026-02-01 14:00",
+      "league": "Serie A (ITA)",
+      "match": "Cremonese vs Inter",
+      "bet_type": "Home Win",
+      "model_prob_pct": 20.1,
+      "bookmaker_odds": 11.5,
+      "value_edge_pct": 11.4,
+      "suggested_wager": 15.59
     },
     {
       "date": "2026-02-01 14:00",
@@ -43,24 +53,24 @@
       "suggested_wager": 15.28
     },
     {
-      "date": "2026-02-01 14:00",
-      "league": "Serie A (ITA)",
-      "match": "Cremonese vs Inter",
+      "date": "2026-02-07 15:00",
+      "league": "Premier League (ENG)",
+      "match": "Burnley vs West Ham",
       "bet_type": "Home Win",
-      "model_prob_pct": 20.1,
-      "bookmaker_odds": 10.5,
-      "value_edge_pct": 10.6,
-      "suggested_wager": 14.59
+      "model_prob_pct": 41.1,
+      "bookmaker_odds": 3.25,
+      "value_edge_pct": 10.3,
+      "suggested_wager": 18.58
     },
     {
-      "date": "2026-01-31 18:00",
-      "league": "Ligue 1 (FRA)",
-      "match": "Lorient vs Nantes",
+      "date": "2026-02-07 14:30",
+      "league": "Bundesliga (GER)",
+      "match": "VfL Wolfsburg vs Borussia Dortmund",
       "bet_type": "Home Win",
-      "model_prob_pct": 61.2,
-      "bookmaker_odds": 1.8,
-      "value_edge_pct": 5.7,
-      "suggested_wager": 16.01
+      "model_prob_pct": 31.0,
+      "bookmaker_odds": 4.25,
+      "value_edge_pct": 7.5,
+      "suggested_wager": 12.29
     }
   ]
 }
