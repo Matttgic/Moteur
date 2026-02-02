@@ -1,7 +1,17 @@
 {
-  "generated_at": "2026-02-01T07:37:33.052055",
-  "total_bets": 7,
+  "generated_at": "2026-02-02T07:50:30.852681",
+  "total_bets": 8,
   "bets": [
+    {
+      "date": "2026-02-08 16:00",
+      "league": "Ligue 1 (FRA)",
+      "match": "Angers vs Toulouse",
+      "bet_type": "Home Win",
+      "model_prob_pct": 43.4,
+      "bookmaker_odds": 3.5,
+      "value_edge_pct": 14.8,
+      "suggested_wager": 25.88
+    },
     {
       "date": "2026-02-07 14:30",
       "league": "Bundesliga (GER)",
@@ -13,54 +23,14 @@
       "suggested_wager": 22.13
     },
     {
-      "date": "2026-02-01 16:15",
-      "league": "Ligue 1 (FRA)",
-      "match": "Angers vs Metz",
-      "bet_type": "Home Win",
-      "model_prob_pct": 60.1,
-      "bookmaker_odds": 2.08,
-      "value_edge_pct": 12.0,
-      "suggested_wager": 28.99
-    },
-    {
-      "date": "2026-02-01 17:00",
-      "league": "La Liga (ESP)",
-      "match": "Elche vs Barcelona",
-      "bet_type": "Home Win",
-      "model_prob_pct": 23.3,
-      "bookmaker_odds": 8.5,
-      "value_edge_pct": 11.5,
-      "suggested_wager": 16.28
-    },
-    {
-      "date": "2026-02-01 14:00",
-      "league": "Serie A (ITA)",
-      "match": "Cremonese vs Inter",
-      "bet_type": "Home Win",
-      "model_prob_pct": 20.1,
-      "bookmaker_odds": 11.5,
-      "value_edge_pct": 11.4,
-      "suggested_wager": 15.59
-    },
-    {
-      "date": "2026-02-01 14:00",
-      "league": "Serie A (ITA)",
-      "match": "Parma vs Juventus",
-      "bet_type": "Home Win",
-      "model_prob_pct": 23.2,
-      "bookmaker_odds": 8.0,
-      "value_edge_pct": 10.7,
-      "suggested_wager": 15.28
-    },
-    {
       "date": "2026-02-07 15:00",
       "league": "Premier League (ENG)",
       "match": "Burnley vs West Ham",
       "bet_type": "Home Win",
       "model_prob_pct": 41.1,
-      "bookmaker_odds": 3.25,
-      "value_edge_pct": 10.3,
-      "suggested_wager": 18.58
+      "bookmaker_odds": 3.2,
+      "value_edge_pct": 9.8,
+      "suggested_wager": 17.83
     },
     {
       "date": "2026-02-07 14:30",
@@ -68,9 +38,49 @@
       "match": "VfL Wolfsburg vs Borussia Dortmund",
       "bet_type": "Home Win",
       "model_prob_pct": 31.0,
-      "bookmaker_odds": 4.25,
-      "value_edge_pct": 7.5,
-      "suggested_wager": 12.29
+      "bookmaker_odds": 4.4,
+      "value_edge_pct": 8.3,
+      "suggested_wager": 13.46
+    },
+    {
+      "date": "2026-02-08 14:00",
+      "league": "Serie A (ITA)",
+      "match": "Sassuolo vs Inter",
+      "bet_type": "Home Win",
+      "model_prob_pct": 22.6,
+      "bookmaker_odds": 7.0,
+      "value_edge_pct": 8.3,
+      "suggested_wager": 12.14
+    },
+    {
+      "date": "2026-02-08 16:00",
+      "league": "Ligue 1 (FRA)",
+      "match": "Auxerre vs Paris FC",
+      "bet_type": "Home Win",
+      "model_prob_pct": 48.8,
+      "bookmaker_odds": 2.43,
+      "value_edge_pct": 7.7,
+      "suggested_wager": 16.3
+    },
+    {
+      "date": "2026-02-08 14:00",
+      "league": "Serie A (ITA)",
+      "match": "Lecce vs Udinese",
+      "bet_type": "Home Win",
+      "model_prob_pct": 41.1,
+      "bookmaker_odds": 2.95,
+      "value_edge_pct": 7.2,
+      "suggested_wager": 13.54
+    },
+    {
+      "date": "2026-02-06 20:00",
+      "league": "Premier League (ENG)",
+      "match": "Leeds vs Nottingham Forest",
+      "bet_type": "Home Win",
+      "model_prob_pct": 48.9,
+      "bookmaker_odds": 2.28,
+      "value_edge_pct": 5.1,
+      "suggested_wager": 11.31
     }
   ]
 }
