@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-02-03T07:43:25.777432",
-  "total_bets": 7,
+  "generated_at": "2026-02-04T07:44:42.801910",
+  "total_bets": 8,
   "bets": [
     {
       "date": "2026-02-08 16:00",
@@ -8,9 +8,9 @@
       "match": "Angers vs Toulouse",
       "bet_type": "Home Win",
       "model_prob_pct": 43.4,
-      "bookmaker_odds": 3.5,
-      "value_edge_pct": 14.8,
-      "suggested_wager": 25.88
+      "bookmaker_odds": 3.6,
+      "value_edge_pct": 15.6,
+      "suggested_wager": 26.97
     },
     {
       "date": "2026-02-07 14:30",
@@ -33,14 +33,24 @@
       "suggested_wager": 19.97
     },
     {
+      "date": "2026-02-08 16:00",
+      "league": "Ligue 1 (FRA)",
+      "match": "Auxerre vs Paris FC",
+      "bet_type": "Home Win",
+      "model_prob_pct": 48.8,
+      "bookmaker_odds": 2.55,
+      "value_edge_pct": 9.6,
+      "suggested_wager": 19.76
+    },
+    {
       "date": "2026-02-08 14:00",
       "league": "Serie A (ITA)",
       "match": "Lecce vs Udinese",
       "bet_type": "Home Win",
       "model_prob_pct": 41.1,
-      "bookmaker_odds": 3.1,
-      "value_edge_pct": 8.8,
-      "suggested_wager": 16.24
+      "bookmaker_odds": 3.05,
+      "value_edge_pct": 8.3,
+      "suggested_wager": 15.38
     },
     {
       "date": "2026-02-07 14:30",
@@ -63,14 +73,14 @@
       "suggested_wager": 11.44
     },
     {
-      "date": "2026-02-08 16:00",
-      "league": "Ligue 1 (FRA)",
-      "match": "Auxerre vs Paris FC",
+      "date": "2026-02-10 19:30",
+      "league": "Premier League (ENG)",
+      "match": "Everton vs Bournemouth",
       "bet_type": "Home Win",
-      "model_prob_pct": 48.8,
-      "bookmaker_odds": 2.4,
-      "value_edge_pct": 7.2,
-      "suggested_wager": 15.34
+      "model_prob_pct": 48.5,
+      "bookmaker_odds": 2.38,
+      "value_edge_pct": 6.5,
+      "suggested_wager": 14.04
     }
   ]
 }
