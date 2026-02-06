@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-02-05T07:50:50.285878",
-  "total_bets": 10,
+  "generated_at": "2026-02-06T07:48:22.423390",
+  "total_bets": 11,
   "bets": [
     {
       "date": "2026-02-08 16:00",
@@ -18,9 +18,9 @@
       "match": "FC St. Pauli vs VfB Stuttgart",
       "bet_type": "Home Win",
       "model_prob_pct": 37.3,
-      "bookmaker_odds": 4.3,
-      "value_edge_pct": 14.0,
-      "suggested_wager": 22.87
+      "bookmaker_odds": 4.5,
+      "value_edge_pct": 15.1,
+      "suggested_wager": 24.23
     },
     {
       "date": "2026-02-07 15:00",
@@ -28,9 +28,29 @@
       "match": "Burnley vs West Ham",
       "bet_type": "Home Win",
       "model_prob_pct": 41.1,
-      "bookmaker_odds": 3.5,
-      "value_edge_pct": 12.5,
-      "suggested_wager": 21.85
+      "bookmaker_odds": 3.45,
+      "value_edge_pct": 12.1,
+      "suggested_wager": 21.25
+    },
+    {
+      "date": "2026-02-08 14:00",
+      "league": "Serie A (ITA)",
+      "match": "Sassuolo vs Inter",
+      "bet_type": "Home Win",
+      "model_prob_pct": 22.6,
+      "bookmaker_odds": 8.0,
+      "value_edge_pct": 10.1,
+      "suggested_wager": 14.44
+    },
+    {
+      "date": "2026-02-12 20:00",
+      "league": "Premier League (ENG)",
+      "match": "Brentford vs Arsenal",
+      "bet_type": "Home Win",
+      "model_prob_pct": 29.5,
+      "bookmaker_odds": 5.1,
+      "value_edge_pct": 9.9,
+      "suggested_wager": 15.45
     },
     {
       "date": "2026-02-08 16:00",
@@ -51,16 +71,6 @@
       "bookmaker_odds": 4.35,
       "value_edge_pct": 8.1,
       "suggested_wager": 13.08
-    },
-    {
-      "date": "2026-02-08 14:00",
-      "league": "Serie A (ITA)",
-      "match": "Sassuolo vs Inter",
-      "bet_type": "Home Win",
-      "model_prob_pct": 22.6,
-      "bookmaker_odds": 6.75,
-      "value_edge_pct": 7.8,
-      "suggested_wager": 11.44
     },
     {
       "date": "2026-02-08 14:00",
@@ -88,9 +98,9 @@
       "match": "Sunderland vs Liverpool",
       "bet_type": "Home Win",
       "model_prob_pct": 26.1,
-      "bookmaker_odds": 5.1,
-      "value_edge_pct": 6.5,
-      "suggested_wager": 10.15
+      "bookmaker_odds": 5.2,
+      "value_edge_pct": 6.9,
+      "suggested_wager": 10.69
     },
     {
       "date": "2026-02-11 19:30",
@@ -98,9 +108,9 @@
       "match": "Aston Villa vs Brighton",
       "bet_type": "Home Win",
       "model_prob_pct": 57.1,
-      "bookmaker_odds": 1.93,
-      "value_edge_pct": 5.3,
-      "suggested_wager": 13.72
+      "bookmaker_odds": 1.94,
+      "value_edge_pct": 5.6,
+      "suggested_wager": 14.34
     }
   ]
 }
