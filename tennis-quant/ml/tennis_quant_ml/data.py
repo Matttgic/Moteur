@@ -73,7 +73,7 @@ def clean_matches(frame: pd.DataFrame) -> pd.DataFrame:
     out = out[out["winner_name"].notna() & out["loser_name"].notna()]
 
     score = out["score"].fillna("").astype(str).str.upper()
-    invalid_score = score.str.contains(r"\b(W/O|WO|DEF|ABD)\b", regex=True)
+    invalid_score = score.str.contains(r"\b(?:W/O|WO|DEF|ABD)\b", regex=True)
     retirement = score.str.contains(r"\bRET\b", regex=True)
     out = out[~invalid_score & ~retirement]
 
@@ -87,7 +87,8 @@ def clean_matches(frame: pd.DataFrame) -> pd.DataFrame:
     out["round_order"] = out["round"].map(ROUND_ORDER).fillna(-1).astype(int)
     out["match_num_sort"] = pd.to_numeric(out["match_num"], errors="coerce").fillna(0)
 
-    # Do not sort only by match_num. Its convention changed in some 2025+ files.
+    # match_num alone is unsafe for chronology because its convention changed
+    # in some 2025+ files. Round order is the primary within-tournament key.
     out = out.sort_values(
         ["match_date", "tourney_name", "round_order", "match_num_sort"],
         kind="stable",
