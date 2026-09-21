@@ -23,19 +23,19 @@
 </div>
 
 <main id="app" class="wrap hide">
-  <div class="top"><div><div class="brand">EdgeScope</div><div class="muted">Pinnacle fair price → bookmakers FR</div></div><span class="badge">LIVE MVP</span></div>
+  <div class="top"><div><div class="brand">EdgeScope</div><div class="muted">Value scanner multi-sports · référence Pinnacle</div></div><span class="badge">GITHUB PAGES</span></div>
   <div class="nav"><button onclick="show('scan')">Scanner</button><button onclick="loadHistory()">Historique</button><button onclick="loadPerf()">Performance</button><button onclick="loadSettings()">Réglages</button><button onclick="logout()">Quitter</button></div>
 
   <section id="scan">
     <div class="tools">
-      <select id="sport"><option value="soccer">Football</option><option value="basketball">Basketball</option><option value="tennis">Tennis</option></select>
-      <button class="btn primary" onclick="doScan()">Scanner maintenant</button>
+      <div class="card"><b>Tous les sports</b><div class="muted">Détection automatique des sports actifs sur les prochaines 24 h.</div></div>
+      <button id="scanBtn" class="btn primary" onclick="doScan()">Scanner tous les sports</button>
     </div>
     <div class="grid">
-      <div class="card metric"><span class="muted">Signaux</span><b id="n">—</b></div>
+      <div class="card metric"><span class="muted">Opportunités</span><b id="n">—</b></div>
+      <div class="card metric"><span class="muted">Sports couverts</span><b id="sports">—</b></div>
+      <div class="card metric"><span class="muted">Tournois scannés</span><b id="tours">—</b></div>
       <div class="card metric"><span class="muted">Meilleur edge</span><b id="best">—</b></div>
-      <div class="card metric"><span class="muted">Seuil</span><b>2,5%</b></div>
-      <div class="card metric"><span class="muted">Source</span><b>OddsPapi</b></div>
     </div>
     <div id="status" class="card muted status">Ajoute d’abord ta clé OddsPapi dans Réglages.</div>
     <div id="rows" class="list"></div>
@@ -55,7 +55,7 @@ async function call(action,options={}){const url=API+'?action='+encodeURICompone
 async function login(){PIN=document.getElementById('pin').value.trim();try{await call('settings');localStorage.setItem('edgescope_pin',PIN);document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings();show('scan')}catch(e){document.getElementById('loginMsg').textContent='Code PIN incorrect.'}}
 function logout(){localStorage.removeItem('edgescope_pin');PIN='';document.getElementById('app').classList.add('hide');document.getElementById('login').classList.remove('hide')}
 function show(id){for(const x of ['scan','history','performance','settings'])document.getElementById(x).classList.toggle('hide',x!==id)}
-async function doScan(){show('scan');status.textContent='Analyse des cotes…';rows.innerHTML='';try{const sport=document.getElementById('sport').value;const x=await call('scan',{extra:'&sport='+encodeURIComponent(sport)});if(x.status==='missing_api_key'){status.textContent='Configure la clé OddsPapi dans Réglages.';return}if(x.status!=='ok'){status.textContent='Erreur: '+(x.error||x.status);return}n.textContent=x.rows.length;best.textContent=x.rows[0]?pc(x.rows[0].edge):'—';status.textContent=x.rows.length?'Opportunités répondant aux filtres.':'Aucune value ≥ 2,5% suffisamment fraîche.';rows.innerHTML=x.rows.map(o=>'<article class="card row"><div><b>'+o.event+'</b><div class="muted">'+o.market+'</div></div><div><span class="pill">'+o.bookmakerTitle+'</span><div><b>'+o.selection+'</b> @ '+Number(o.offeredOdds).toFixed(2)+'</div></div><div><span class="muted">Fair</span><br><b>'+Number(o.fairOdds).toFixed(2)+'</b></div><div><span class="muted">Edge</span><br><b class="good">'+pc(o.edge)+'</b></div><div><span class="muted">Score</span><br><b>'+o.confidence+'/100</b></div></article>').join('')}catch(e){status.textContent='Erreur réseau ou authentification.'}}
+async function doScan(){show('scan');scanBtn.disabled=true;status.textContent='Scan global en cours… cela peut prendre une vingtaine de secondes.';rows.innerHTML='';try{const x=await call('scan',{extra:'&sport=all'});if(x.status==='missing_api_key'){status.textContent='Configure la clé OddsPapi dans Réglages.';return}if(x.status!=='ok'){status.textContent='Erreur: '+(x.error||x.status);return}const cv=x.coverage||{};n.textContent=(x.rows||[]).length;sports.textContent=cv.sports??'—';tours.textContent=cv.tournaments??'—';best.textContent=x.rows?.[0]?pc(x.rows[0].edge):'—';status.textContent=(x.rows||[]).length?((x.cached?'Résultat en cache · ':'')+(x.rows.length)+' opportunité(s) détectée(s).'):'Scan terminé : aucune value ≥ 2,5% détectée sur la couverture actuelle.';rows.innerHTML=(x.rows||[]).map(o=>'<article class="card row"><div><b>'+o.event+'</b><div class="muted">'+o.sport+' · '+o.market+'</div></div><div><span class="pill">'+o.bookmakerTitle+'</span><div><b>'+o.selection+'</b> @ '+Number(o.offeredOdds).toFixed(2)+'</div></div><div><span class="muted">Fair</span><br><b>'+Number(o.fairOdds).toFixed(2)+'</b></div><div><span class="muted">Edge</span><br><b class="good">'+pc(o.edge)+'</b></div><div><span class="muted">Score</span><br><b>'+o.confidence+'/100</b></div></article>').join('')}catch(e){status.textContent='Erreur : '+(e?.message||'réseau ou authentification.')}finally{scanBtn.disabled=false}}
 async function loadHistory(){show('history');const x=await call('history');hrows.innerHTML=(x.rows||[]).map(r=>'<div class="card"><b>'+r.event_name+'</b><div class="muted">'+r.selection+' · '+r.bookmaker_key+' · '+pc(r.edge)+'</div></div>').join('')||'<div class="card muted">Aucun historique.</div>'}
 async function loadPerf(){show('performance');const x=await call('performance'),p=x.data||{};perfgrid.innerHTML=[['Signaux',p.signals||0],['Edge moyen',pc(p.avgEdge||0)],['P&L',(p.pnl||0).toFixed(2)+' €'],['ROI',p.roi==null?'—':pc(p.roi)]].map(a=>'<div class="card metric"><span class="muted">'+a[0]+'</span><b>'+a[1]+'</b></div>').join('')}
 async function loadSettings(){show('settings');const x=await call('settings');setstatus.textContent='OddsPapi : '+(x.oddspapi?'configuré':'à configurer')}
