@@ -9,6 +9,7 @@ type Opportunity = {
   id: string;
   sport: string;
   event: string;
+  commenceTime?: string;
   market: string;
   selection: string;
   bookmakerTitle: string;
@@ -183,6 +184,25 @@ export default function EdgeScopeClient() {
     }
   }
 
+  function humanMarket(m = "") {
+    const s = String(m).toLowerCase();
+    if (s.includes("first quarter winner")) return "Vainqueur du 1er quart-temps";
+    if (s.includes("first half winner")) return "Vainqueur de la 1re mi-temps";
+    if (s.includes("full time result")) return "Résultat du match";
+    if (s.includes("moneyline")) return "Vainqueur du match";
+    if (s.includes("winner")) return "Vainqueur";
+    if (s.includes("total")) return "Total de points/buts";
+    if (s.includes("handicap") || s.includes("spread")) return "Handicap";
+    if (s.includes("both teams to score")) return "Les deux équipes marquent";
+    return m;
+  }
+
+  function humanBet(selection: string, market: string) {
+    if (market.includes("Vainqueur")) return `${selection} gagnent · ${market.toLowerCase()}`;
+    if (market === "Résultat du match") return selection === "Nul" ? "Match nul" : `${selection} gagnent le match`;
+    return `${market} — ${selection}`;
+  }
+
   if (!authenticated) {
     return (
       <main className={styles.loginShell}>
@@ -249,18 +269,29 @@ export default function EdgeScopeClient() {
           </section>
 
           <section className={styles.list}>
-            {rows.map((o) => (
-              <article className={styles.opportunity} key={o.id}>
-                <div className={styles.eventBlock}>
-                  <strong>{o.event}</strong>
-                  <span>{o.sport} · {o.market}</span>
-                </div>
-                <div><span className={styles.pill}>{o.bookmakerTitle}</span><strong>{o.selection} @ {Number(o.offeredOdds).toFixed(2)}</strong></div>
-                <div><span>Fair</span><strong>{Number(o.fairOdds).toFixed(2)}</strong></div>
-                <div><span>Edge</span><strong className={styles.edge}>{(Number(o.edge) * 100).toFixed(2)}%</strong></div>
-                <div><span>Score</span><strong>{o.confidence}/100</strong></div>
-              </article>
-            ))}
+            {rows.map((o) => {
+              const market = humanMarket(o.market);
+              const start = o.commenceTime ? new Date(o.commenceTime).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+              const label = humanBet(o.selection, market);
+              const strength = o.confidence >= 85 ? "SIGNAL FORT" : o.confidence >= 75 ? "SIGNAL VALIDÉ" : "SIGNAL";
+              return (
+                <article className={styles.betCard} key={o.id}>
+                  <div className={styles.betTop}>
+                    <span className={styles.signal}>{strength}</span>
+                    <span className={styles.pill}>{o.sport}</span>
+                  </div>
+                  <span className={styles.betLabel}>PARI À FAIRE</span>
+                  <strong className={styles.betPick}>{label}</strong>
+                  <strong className={styles.betOdds}>@ {Number(o.offeredOdds).toFixed(2)} chez {o.bookmakerTitle}</strong>
+                  <span className={styles.betEvent}>{o.event}{start ? ` · ${start}` : ""}</span>
+                  <div className={styles.betMeta}>
+                    <span>Cote juste <b>{Number(o.fairOdds).toFixed(2)}</b></span>
+                    <span>Edge <b className={styles.edge}>{(Number(o.edge) * 100).toFixed(2)}%</b></span>
+                    <span>Score <b>{o.confidence}/100</b></span>
+                  </div>
+                </article>
+              );
+            })}
           </section>
         </>
       )}
