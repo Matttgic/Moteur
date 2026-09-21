@@ -8,6 +8,14 @@
     {
       "path": "/api/cron/tennis-sync/wta",
       "schedule": "25 3 * * *"
+    },
+    {
+      "path": "/api/cron/tennis-picks/atp",
+      "schedule": "5 7 * * *"
+    },
+    {
+      "path": "/api/cron/tennis-picks/wta",
+      "schedule": "25 7 * * *"
     }
   ]
 }
