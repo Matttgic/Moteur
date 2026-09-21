@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
 export function getSupabaseServerClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -9,7 +10,7 @@ export function getSupabaseServerClient() {
   }
 
   // Server-only. Never expose SUPABASE_SERVICE_ROLE_KEY to the browser.
-  return createClient(url, serviceRole, {
+  return createClient<Database>(url, serviceRole, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
