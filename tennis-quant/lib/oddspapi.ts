@@ -6,23 +6,11 @@ const TENNIS_WINNER_OUTCOME_2 = "122";
 
 export type TennisTour = "atp" | "wta";
 
-type Tournament = {
-  tournamentId: number;
-  tournamentSlug?: string;
-  tournamentName?: string;
-  categorySlug?: string;
-  categoryName?: string;
-  futureFixtures?: number;
-  upcomingFixtures?: number;
-  liveFixtures?: number;
-};
-
 type PriceNode = {
   active?: boolean;
   price?: number;
   changedAt?: string;
   bookmakerChangedAt?: string | null;
-  mainLine?: boolean;
 };
 
 type OddsOutcome = {
@@ -65,18 +53,6 @@ const EXCLUDED_TENNIS =
 const GRAND_SLAM =
   /australian open|roland garros|french open|wimbledon|us open|grand slam/i;
 
-function tournamentText(tournament: Tournament) {
-  return [
-    tournament.tournamentName,
-    tournament.tournamentSlug,
-    tournament.categoryName,
-    tournament.categorySlug,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-}
-
 function fixtureText(fixture: OddsFixture) {
   return [
     fixture.tournamentName,
@@ -89,7 +65,11 @@ function fixtureText(fixture: OddsFixture) {
     .toLowerCase();
 }
 
-function isTargetText(text: string, tour: TennisTour) {
+export function isTargetTourFixture(
+  fixture: OddsFixture,
+  tour: TennisTour,
+) {
+  const text = fixtureText(fixture);
   if (EXCLUDED_TENNIS.test(text)) return false;
 
   if (tour === "atp") {
@@ -105,25 +85,6 @@ function isTargetText(text: string, tour: TennisTour) {
     /\bwta\b|women singles|women's singles/.test(text) ||
     GRAND_SLAM.test(text)
   );
-}
-
-function isTargetTourTournament(
-  tournament: Tournament,
-  tour: TennisTour,
-) {
-  const active =
-    (tournament.futureFixtures ?? 0) > 0 ||
-    (tournament.upcomingFixtures ?? 0) > 0 ||
-    (tournament.liveFixtures ?? 0) > 0;
-
-  return active && isTargetText(tournamentText(tournament), tour);
-}
-
-export function isTargetTourFixture(
-  fixture: OddsFixture,
-  tour: TennisTour,
-) {
-  return isTargetText(fixtureText(fixture), tour);
 }
 
 async function oddsApi<T>(
@@ -175,10 +136,10 @@ function normalizeFixturePayload(payload: unknown): OddsFixture[] {
 }
 
 function activePrice(outcome: OddsOutcome | undefined) {
-  const prices = outcome?.players;
-  if (!prices) return null;
+  const players = outcome?.players;
+  if (!players) return null;
 
-  const price = Object.values(prices).find(
+  const price = Object.values(players).find(
     (candidate) =>
       candidate &&
       candidate.active !== false &&
@@ -196,7 +157,7 @@ function activePrice(outcome: OddsOutcome | undefined) {
   };
 }
 
-function extractMoneyline(
+function extractWinner(
   fixture: OddsFixture,
   bookmaker: string,
 ) {
@@ -212,7 +173,7 @@ function extractMoneyline(
 
   const inv1 = 1 / side1.price;
   const inv2 = 1 / side2.price;
-  const overround = inv1 + inv2;
+  const total = inv1 + inv2;
 
   return {
     marketId: TENNIS_WINNER_MARKET_ID,
@@ -221,9 +182,9 @@ function extractMoneyline(
     outcome2Id: Number(TENNIS_WINNER_OUTCOME_2),
     odds1: side1.price,
     odds2: side2.price,
-    noVigProbability1: inv1 / overround,
-    noVigProbability2: inv2 / overround,
-    overround: overround - 1,
+    noVigProbability1: inv1 / total,
+    noVigProbability2: inv2 / total,
+    overround: total - 1,
     changedAt1: side1.changedAt,
     changedAt2: side2.changedAt,
   };
@@ -251,24 +212,34 @@ function boardWindow() {
   };
 }
 
-function chunks<T>(values: T[], size: number) {
-  const result: T[][] = [];
-
-  for (let index = 0; index < values.length; index += size) {
-    result.push(values.slice(index, index + size));
-  }
-
-  return result;
-}
-
 function withinWindow(
   fixture: OddsFixture,
   window: ReturnType<typeof boardWindow>,
 ) {
   if (!fixture.startTime) return false;
   const timestamp = Date.parse(fixture.startTime);
-  if (!Number.isFinite(timestamp)) return false;
-  return timestamp >= window.fromMs && timestamp <= window.toMs;
+  return (
+    Number.isFinite(timestamp) &&
+    timestamp >= window.fromMs &&
+    timestamp <= window.toMs
+  );
+}
+
+function chunks<T>(values: T[], size: number) {
+  const output: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    output.push(values.slice(index, index + size));
+  }
+  return output;
+}
+
+function isHttpStatus(error: unknown, status: number) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status?: unknown }).status === status
+  );
 }
 
 export async function getTennisOdds(
@@ -278,101 +249,141 @@ export async function getTennisOdds(
 ) {
   const window = boardWindow();
 
-  const tournaments = await oddsApi<Tournament[]>(
+  // Discover the current tennis board without bookmaker/hasOdds filters.
+  // Those filters can remove a fixture when one requested bookmaker has not
+  // opened its market yet, even when another bookmaker has.
+  const fixturePayload = await oddsApi<unknown>(
     apiKey,
-    "tournaments",
+    "fixtures",
     {
       sportId: String(TENNIS_SPORT_ID),
+      from: window.from,
+      to: window.to,
+      statusId: "0",
       language: "en",
     },
-    86_400,
+    21_600,
   );
 
-  const targetTournaments = tournaments
-    .filter((tournament) => isTargetTourTournament(tournament, tour))
-    .slice(0, 24);
+  const boardFixtures = normalizeFixturePayload(fixturePayload)
+    .filter(
+      (fixture) =>
+        fixture.sportId === TENNIS_SPORT_ID &&
+        fixture.statusId === 0 &&
+        withinWindow(fixture, window) &&
+        isTargetTourFixture(fixture, tour),
+    );
 
-  if (!targetTournaments.length) {
+  const tournamentMap = new Map<
+    number,
+    { tournamentId: number; tournamentName: string | null; categoryName: string | null }
+  >();
+
+  for (const fixture of boardFixtures) {
+    if (typeof fixture.tournamentId !== "number") continue;
+
+    if (!tournamentMap.has(fixture.tournamentId)) {
+      tournamentMap.set(fixture.tournamentId, {
+        tournamentId: fixture.tournamentId,
+        tournamentName: fixture.tournamentName ?? null,
+        categoryName: fixture.categoryName ?? null,
+      });
+    }
+  }
+
+  const fixtureIds = new Set(
+    boardFixtures
+      .map((fixture) => fixture.fixtureId)
+      .filter((value): value is string => typeof value === "string"),
+  );
+
+  if (!tournamentMap.size) {
     return {
       tour: tour.toUpperCase(),
       tournamentCount: 0,
+      discoveredFixtures: boardFixtures.length,
       tournaments: [],
       bookmakers,
       moneylineMarketCandidates: [
         { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
       ],
-      requestWindow: {
-        from: window.from,
-        to: window.to,
-      },
+      requestWindow: { from: window.from, to: window.to },
       fixtures: [],
     };
   }
 
-  const tournamentIds = targetTournaments.map(
-    (tournament) => tournament.tournamentId,
-  );
+  const merged = new Map<string, OddsFixture>();
+  let requests = 0;
+  let emptyBookmakerQueries = 0;
 
-  const mergedOddsFixtures = new Map<string, OddsFixture>();
-  let oddsRequestCount = 0;
-
-  for (const batch of chunks(tournamentIds, 8)) {
+  for (const batch of chunks(Array.from(tournamentMap.keys()), 8)) {
     for (const bookmaker of bookmakers) {
-      if (oddsRequestCount > 0) {
+      if (requests > 0) {
         await new Promise((resolve) => setTimeout(resolve, 1_050));
       }
 
-      const payload = await oddsApi<unknown>(
-        apiKey,
-        "odds-by-tournaments",
-        {
-          tournamentIds: batch.join(","),
-          bookmaker,
-          language: "en",
-          verbosity: "3",
-          oddsFormat: "decimal",
-        },
-        43_200,
-      );
+      try {
+        const payload = await oddsApi<unknown>(
+          apiKey,
+          "odds-by-tournaments",
+          {
+            tournamentIds: batch.join(","),
+            bookmaker,
+            language: "en",
+            verbosity: "3",
+            oddsFormat: "decimal",
+          },
+          21_600,
+        );
 
-      oddsRequestCount += 1;
+        requests += 1;
 
-      for (const fixture of normalizeFixturePayload(payload)) {
-        if (typeof fixture.fixtureId !== "string") continue;
+        for (const fixture of normalizeFixturePayload(payload)) {
+          if (typeof fixture.fixtureId !== "string") continue;
 
-        const existing = mergedOddsFixtures.get(fixture.fixtureId);
+          const existing = merged.get(fixture.fixtureId);
+          merged.set(
+            fixture.fixtureId,
+            existing
+              ? {
+                  ...existing,
+                  ...fixture,
+                  bookmakerOdds: {
+                    ...(existing.bookmakerOdds ?? {}),
+                    ...(fixture.bookmakerOdds ?? {}),
+                  },
+                }
+              : fixture,
+          );
+        }
+      } catch (error) {
+        requests += 1;
 
-        if (!existing) {
-          mergedOddsFixtures.set(fixture.fixtureId, fixture);
+        // OddsPapi returns FIXTURE_NOT_FOUND when a bookmaker has no board for
+        // the requested tournament set. That is an empty result, not a provider
+        // outage, so continue with the other bookmaker.
+        if (isHttpStatus(error, 404)) {
+          emptyBookmakerQueries += 1;
           continue;
         }
 
-        mergedOddsFixtures.set(fixture.fixtureId, {
-          ...existing,
-          ...fixture,
-          bookmakerOdds: {
-            ...(existing.bookmakerOdds ?? {}),
-            ...(fixture.bookmakerOdds ?? {}),
-          },
-        });
+        throw error;
       }
     }
   }
 
-  const fixtures = Array.from(mergedOddsFixtures.values())
+  const fixtures = Array.from(merged.values())
     .filter(
       (fixture) =>
-        fixture.sportId === TENNIS_SPORT_ID &&
-        fixture.statusId === 0 &&
-        fixture.hasOdds !== false &&
-        isTargetTourFixture(fixture, tour) &&
+        typeof fixture.fixtureId === "string" &&
+        fixtureIds.has(fixture.fixtureId) &&
         withinWindow(fixture, window),
     )
     .map((fixture) => {
       const prices = Object.fromEntries(
         bookmakers.map((bookmaker) => [
           bookmaker,
-          extractMoneyline(fixture, bookmaker),
+          extractWinner(fixture, bookmaker),
         ]),
       );
 
@@ -394,22 +405,17 @@ export async function getTennisOdds(
 
   return {
     tour: tour.toUpperCase(),
-    tournamentCount: targetTournaments.length,
-    tournaments: targetTournaments.map((tournament) => ({
-      tournamentId: tournament.tournamentId,
-      tournamentName: tournament.tournamentName ?? null,
-      categoryName: tournament.categoryName ?? null,
-      futureFixtures: tournament.futureFixtures ?? 0,
-      upcomingFixtures: tournament.upcomingFixtures ?? 0,
-      liveFixtures: tournament.liveFixtures ?? 0,
-    })),
+    tournamentCount: tournamentMap.size,
+    discoveredFixtures: boardFixtures.length,
+    tournaments: Array.from(tournamentMap.values()),
     bookmakers,
     moneylineMarketCandidates: [
       { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
     ],
-    requestWindow: {
-      from: window.from,
-      to: window.to,
+    requestWindow: { from: window.from, to: window.to },
+    providerDiagnostics: {
+      oddsRequests: requests,
+      emptyBookmakerQueries,
     },
     fixtures,
   };
