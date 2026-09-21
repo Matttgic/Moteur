@@ -87,6 +87,7 @@ jobs:
             /tmp/tennis-quant-atp/inference_spec.json
             /tmp/tennis-quant-atp/rank_only_fallback/inference_spec.json
             /tmp/tennis-quant-atp/report.json
+            /tmp/tennis-quant-atp/player_state_seed.json
           retention-days: 7
 
       - name: Upload WTA inference artifact
@@ -97,4 +98,5 @@ jobs:
             /tmp/tennis-quant-wta/inference_spec.json
             /tmp/tennis-quant-wta/rank_only_fallback/inference_spec.json
             /tmp/tennis-quant-wta/report.json
+            /tmp/tennis-quant-wta/player_state_seed.json
           retention-days: 7
