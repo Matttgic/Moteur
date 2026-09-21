@@ -1,0 +1,79 @@
+name: Tennis Quant CI
+
+on:
+  push:
+    branches:
+      - tennis-quant-v1
+    paths:
+      - "tennis-quant/**"
+      - ".github/workflows/tennis-quant-ci.yml"
+  pull_request:
+    paths:
+      - "tennis-quant/**"
+      - ".github/workflows/tennis-quant-ci.yml"
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tennis-quant
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  ml:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tennis-quant/ml
+    env:
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ML dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: pytest -q
+
+      - name: ATP multi-year benchmark
+        run: |
+          python -m tennis_quant_ml.train \
+            --tour ATP \
+            --start-year 2005 \
+            --end-year 2026 \
+            --test-years 2022 2023 2024 2025 \
+            --output /tmp/tennis-quant-atp
+
+      - name: WTA multi-year benchmark
+        run: |
+          python -m tennis_quant_ml.train \
+            --tour WTA \
+            --start-year 2005 \
+            --end-year 2026 \
+            --test-years 2022 2023 2024 2025 \
+            --output /tmp/tennis-quant-wta
