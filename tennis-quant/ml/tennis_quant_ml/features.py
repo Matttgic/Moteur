@@ -210,3 +210,93 @@ def build_features(matches: pd.DataFrame, tour: str) -> pd.DataFrame:
         raise ValueError("Non-finite feature detected")
 
     return result
+
+
+def export_player_states(matches: pd.DataFrame, tour: str) -> dict:
+    """Rebuild the exact feature-state accumulator and export its terminal state.
+
+    This intentionally mirrors the state update rules used by build_features so
+    live inference can continue from the same historical state instead of
+    restarting Elo/form/service aggregates from arbitrary priors.
+    """
+    states: dict[str, PlayerState] = defaultdict(PlayerState)
+
+    for _, match in matches.iterrows():
+        winner = str(match["winner_name"])
+        loser = str(match["loser_name"])
+        date = pd.Timestamp(match["match_date"])
+        surface = str(match["surface"])
+        surface_key = surface if surface in SURFACES else "Hard"
+
+        ws = states[winner]
+        ls = states[loser]
+
+        global_expected = _expected(ws.elo, ls.elo)
+        k_global = 28.0
+        ws.elo += k_global * (1.0 - global_expected)
+        ls.elo += k_global * (0.0 - global_expected)
+
+        surface_expected = _expected(
+            ws.surface_elo[surface_key], ls.surface_elo[surface_key]
+        )
+        k_surface = 32.0
+        ws.surface_elo[surface_key] += k_surface * (1.0 - surface_expected)
+        ls.surface_elo[surface_key] += k_surface * (0.0 - surface_expected)
+
+        ws.recent_results.append(1)
+        ls.recent_results.append(0)
+        ws.recent_dates.append(date)
+        ls.recent_dates.append(date)
+
+        w_games, w_holds = _service_summary(match, "w")
+        l_games, l_holds = _service_summary(match, "l")
+        w_breaks = max(0.0, l_games - l_holds)
+        l_breaks = max(0.0, w_games - w_holds)
+
+        ws.service_games += w_games
+        ws.service_holds += w_holds
+        ws.return_games += l_games
+        ws.return_breaks += w_breaks
+
+        ls.service_games += l_games
+        ls.service_holds += l_holds
+        ls.return_games += w_games
+        ls.return_breaks += l_breaks
+
+    players = []
+    for name, state in sorted(states.items(), key=lambda item: item[0].casefold()):
+        last_match_at = (
+            state.recent_dates[-1].isoformat() if state.recent_dates else None
+        )
+        players.append(
+            {
+                "name": name,
+                "elo": float(state.elo),
+                "surface_elo": {
+                    surface: float(state.surface_elo[surface])
+                    for surface in SURFACES
+                },
+                "recent_results": [int(value) for value in state.recent_results],
+                "recent_dates": [
+                    pd.Timestamp(value).isoformat() for value in state.recent_dates
+                ],
+                "service_games": float(state.service_games),
+                "service_holds": float(state.service_holds),
+                "return_games": float(state.return_games),
+                "return_breaks": float(state.return_breaks),
+                "last_match_at": last_match_at,
+            }
+        )
+
+    latest = (
+        str(pd.Timestamp(matches["match_date"].max()).date())
+        if not matches.empty
+        else None
+    )
+
+    return {
+        "schema_version": 1,
+        "tour": tour.upper(),
+        "as_of": latest,
+        "players": players,
+    }
