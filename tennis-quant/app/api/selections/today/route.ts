@@ -14,6 +14,7 @@ import {
   type TennisTour,
 } from "@/lib/oddspapi";
 import {
+  getHistorySyncFreshness,
   loadPlayerStatesForNames,
   normalizePlayerName,
   probabilityForLiveMatch,
@@ -179,7 +180,10 @@ export async function GET(request: NextRequest) {
         (value): value is string => Boolean(value),
       ),
     );
-    const states = await loadPlayerStatesForNames(modelTour, playerNames);
+    const [states, historySync] = await Promise.all([
+      loadPlayerStatesForNames(modelTour, playerNames),
+      getHistorySyncFreshness(modelTour),
+    ]);
 
     const analyzed = [];
     const rejected = [];
@@ -235,7 +239,13 @@ export async function GET(request: NextRequest) {
       const sharp = alignQuote(live, oddsFixture, "pinnacle");
       const stateA = states.get(normalizePlayerName(p1.name)) ?? null;
       const stateB = states.get(normalizePlayerName(p2.name)) ?? null;
-      const model = probabilityForLiveMatch(modelTour, live, stateA, stateB);
+      const model = probabilityForLiveMatch(
+        modelTour,
+        live,
+        stateA,
+        stateB,
+        historySync.fresh,
+      );
 
       const edgeA = model.probabilityA - executable.marketProbabilityA;
       const edgeB = model.probabilityB - executable.marketProbabilityB;
@@ -335,7 +345,8 @@ export async function GET(request: NextRequest) {
       tour: modelTour,
       status: bets.length ? "BET_OPPORTUNITIES_FOUND" : "NO_BET_TODAY",
       modelPolicy: {
-        fullModelEnabledForLive: true,
+        fullModelEnabledForLive: historySync.fresh,
+        historySync,
         fullModelMatches: fullModelCount,
         fallbackMatches: analyzed.length - fullModelCount,
         noForcedBets: true,
