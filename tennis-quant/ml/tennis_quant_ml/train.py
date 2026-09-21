@@ -14,7 +14,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from .data import load_range
-from .features import FEATURE_COLUMNS, build_features
+from .features import FEATURE_COLUMNS, build_features, export_player_states
 
 MODEL_SPECS = {
     "rank_only_logit": ["log_rank_diff"],
@@ -320,6 +320,7 @@ def main() -> None:
 
     raw = load_range(args.tour, args.start_year, args.end_year, args.cache_dir)
     features = build_features(raw, args.tour)
+    state_seed = export_player_states(raw, args.tour)
 
     model_reports, champion, champion_predictions = benchmark_models(
         features,
@@ -330,6 +331,10 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     champion_predictions.to_csv(output_dir / "oos_predictions.csv", index=False)
+    (output_dir / "player_state_seed.json").write_text(
+        json.dumps(state_seed, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     final = fit_final(
         features,
@@ -359,6 +364,7 @@ def main() -> None:
         "aggregate": champion_report["aggregate"],
         "models": model_reports,
         "oos_predictions_file": "oos_predictions.csv",
+        "player_state_seed_file": "player_state_seed.json",
         "final_model": final,
         "fallback_model": fallback_final,
         "betting_metrics": {
