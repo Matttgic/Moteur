@@ -429,6 +429,7 @@ export type Database = {
           handedness: string | null
           id: string
           name: string
+          normalized_name: string
           provider_player_id: string | null
           tour: string
           updated_at: string
@@ -440,6 +441,7 @@ export type Database = {
           handedness?: string | null
           id?: string
           name: string
+          normalized_name: string
           provider_player_id?: string | null
           tour: string
           updated_at?: string
@@ -451,6 +453,7 @@ export type Database = {
           handedness?: string | null
           id?: string
           name?: string
+          normalized_name?: string
           provider_player_id?: string | null
           tour?: string
           updated_at?: string
