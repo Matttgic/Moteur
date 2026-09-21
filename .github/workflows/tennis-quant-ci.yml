@@ -78,3 +78,23 @@ jobs:
             --end-year 2026 \
             --test-years 2022 2023 2024 2025 \
             --output /tmp/tennis-quant-wta
+
+      - name: Upload ATP inference artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tennis-quant-atp-inference
+          path: |
+            /tmp/tennis-quant-atp/inference_spec.json
+            /tmp/tennis-quant-atp/rank_only_fallback/inference_spec.json
+            /tmp/tennis-quant-atp/report.json
+          retention-days: 7
+
+      - name: Upload WTA inference artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tennis-quant-wta-inference
+          path: |
+            /tmp/tennis-quant-wta/inference_spec.json
+            /tmp/tennis-quant-wta/rank_only_fallback/inference_spec.json
+            /tmp/tennis-quant-wta/report.json
+          retention-days: 7

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "tour": "WTA",
+  "model_name": "rank_only_logit",
+  "trained_through": "2026-05-25",
+  "feature_columns": ["log_rank_diff"],
+  "scaler": {"mean": [0.012800335006201459], "scale": [1.525164204880393]},
+  "base_logit": {"coefficients": [-0.9071739577426899], "intercept": -0.01485319498733741},
+  "platt": {"coefficient": 1.004317446303724, "intercept": 0.09927430863025584}
+}
