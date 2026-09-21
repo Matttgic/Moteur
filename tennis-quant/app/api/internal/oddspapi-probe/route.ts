@@ -120,7 +120,6 @@ export async function GET(request: NextRequest) {
 
     const odds = await call("odds", {
       fixtureId: String(fixture.fixtureId),
-      bookmakers: "pinnacle,winamax.fr",
       language: "en",
       verbosity: "3",
       oddsFormat: "decimal",
