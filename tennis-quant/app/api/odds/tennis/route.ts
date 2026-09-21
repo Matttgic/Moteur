@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTennisOdds, type TennisTour } from "@/lib/oddspapi";
+import {
+  FRENCH_EXECUTION_BOOKMAKERS,
+  getTennisOdds,
+  type TennisTour,
+} from "@/lib/oddspapi";
 
 export const runtime = "nodejs";
 
@@ -27,11 +31,13 @@ export async function GET(request: NextRequest) {
   }
 
   const requestedBookmaker =
-    request.nextUrl.searchParams.get("bookmaker")?.trim() || "winamax.fr";
+    request.nextUrl.searchParams.get("bookmaker")?.trim() || null;
 
-  const bookmakers = Array.from(
-    new Set([requestedBookmaker, "pinnacle"].filter(Boolean)),
-  ).slice(0, 3);
+  const bookmakers = requestedBookmaker
+    ? Array.from(new Set([requestedBookmaker, "pinnacle"]))
+    : Array.from(
+        new Set([...FRENCH_EXECUTION_BOOKMAKERS, "pinnacle"]),
+      );
 
   try {
     const result = await getTennisOdds(
@@ -45,7 +51,11 @@ export async function GET(request: NextRequest) {
       sport: "tennis",
       scope: "ATP_WTA_main_tour_singles",
       price_policy: {
-        user_bookmaker: requestedBookmaker,
+        execution_mode: requestedBookmaker ? "requested_bookmaker" : "auto_fr",
+        user_bookmaker: requestedBookmaker ?? "auto_fr",
+        french_bookmakers: requestedBookmaker
+          ? [requestedBookmaker]
+          : FRENCH_EXECUTION_BOOKMAKERS,
         sharp_reference: "pinnacle",
         odds_format: "decimal",
         vig_removed: true,
