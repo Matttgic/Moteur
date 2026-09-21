@@ -265,7 +265,9 @@ export async function loadPlayerStatesForNames(
 
   if (stateError) throw stateError;
 
-  const playerById = new Map(players.map((player: any) => [player.id, player]));
+  const playerById = new Map<string, { id: string; name: string; normalized_name: string; tour: string }>(
+    players.map((player: any) => [player.id, player]),
+  );
   const result = new Map<string, PlayerStateSnapshot>();
 
   for (const row of states ?? []) {
