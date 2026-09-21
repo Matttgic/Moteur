@@ -1,0 +1,40 @@
+name: Tennis Quant CI
+
+on:
+  push:
+    branches:
+      - tennis-quant-v1
+    paths:
+      - "tennis-quant/**"
+      - ".github/workflows/tennis-quant-ci.yml"
+  pull_request:
+    paths:
+      - "tennis-quant/**"
+      - ".github/workflows/tennis-quant-ci.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tennis-quant
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tennis-quant/package-lock.json
+
+      - name: Install
+        run: npm install --package-lock-only && npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
