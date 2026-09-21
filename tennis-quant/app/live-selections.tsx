@@ -137,8 +137,9 @@ export default function LiveSelections() {
           <p className="eyebrow">PARIS DU JOUR · DONNÉES LIVE</p>
           <h2>Sélections du moteur</h2>
           <p>
-            Le moteur peut répondre <strong>NO BET</strong>. Une sélection n'est
-            affichée que si elle passe les filtres de données, modèle et marché.
+            Le moteur peut répondre <strong>NO BET</strong>. Les paris à miser
+            exigent désormais le <strong>FULL ML</strong>. Le fallback ranking
+            reste visible dans l'analyse mais n'est jamais proposé comme pari.
           </p>
         </div>
 
