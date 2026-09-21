@@ -404,9 +404,14 @@ export async function GET(request: NextRequest) {
         sharpProbability,
       });
 
-      const classification = guard.blocked
-        ? { tier: "NO_BET" as const, stakeUnits: 0 }
-        : classify(edge, ev);
+      const classification =
+        guard.blocked
+          ? { tier: "NO_BET" as const, stakeUnits: 0 }
+          : model.mode === "rank_only_fallback"
+            ? edge >= 0.03 && ev > 0
+              ? { tier: "LEAN" as const, stakeUnits: 0 }
+              : { tier: "NO_BET" as const, stakeUnits: 0 }
+            : classify(edge, ev);
 
       analyzed.push({
         matchId: live.id ?? null,
@@ -462,6 +467,7 @@ export async function GET(request: NextRequest) {
           stakeUnits: classification.stakeUnits,
           bet:
             !guard.blocked &&
+            model.mode === "full_logit" &&
             (classification.tier === "PREMIUM" ||
               classification.tier === "VALUE"),
           guard: {
@@ -520,7 +526,7 @@ export async function GET(request: NextRequest) {
         fallbackMatches: analyzed.length - fullModelCount,
         noForcedBets: true,
         fallbackPolicy:
-          "Use rank_only_logit when player state is missing, stale, or has insufficient serve/return quality.",
+          "Rank-only fallback is informational only and can never become an actionable bet. PREMIUM/VALUE bets require full_logit.",
       },
       bookmaker: requestedBookmaker ?? "AUTO_FR",
       executionBookmakers,
