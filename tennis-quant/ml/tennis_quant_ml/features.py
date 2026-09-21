@@ -44,7 +44,12 @@ def _expected(rating_a: float, rating_b: float) -> float:
     return 1.0 / (1.0 + 10.0 ** ((rating_b - rating_a) / 400.0))
 
 
-def _smoothed_rate(successes: float, trials: float, prior: float, strength: float = 24.0) -> float:
+def _smoothed_rate(
+    successes: float,
+    trials: float,
+    prior: float,
+    strength: float = 24.0,
+) -> float:
     return (successes + prior * strength) / (trials + strength)
 
 
@@ -56,7 +61,7 @@ def _form(state: PlayerState) -> float:
 
 
 def _load14(state: PlayerState, now: pd.Timestamp) -> float:
-    cutoff = now - pd.Timedelta(days=14)
+    cutoff = now - pd.Timedelta("14D")
     return float(sum(date >= cutoff for date in state.recent_dates))
 
 
@@ -161,7 +166,7 @@ def build_features(matches: pd.DataFrame, tour: str) -> pd.DataFrame:
             }
         )
 
-        # Update ratings only after the pre-match feature snapshot has been recorded.
+        # Update all state only after the pre-match snapshot is recorded.
         global_expected = _expected(ws.elo, ls.elo)
         k_global = 28.0
         ws.elo += k_global * (1.0 - global_expected)
