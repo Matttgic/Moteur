@@ -1,5 +1,6 @@
 import benchmark from "@/ml/benchmark_reference.json";
 import LiveSelections from "./live-selections";
+import EconomicValidation from "./economic-validation";
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const tours = ["ATP", "WTA"] as const;
@@ -19,7 +20,7 @@ export default function Home() {
             Probabilité → cote juste → marché sans marge → edge → EV → décision.
           </p>
         </div>
-        <span className="status">ML VALIDÉ · ROI EN ATTENTE</span>
+        <span className="status">ML VALIDÉ · ÉCONOMIE EN COLLECTE</span>
       </header>
 
       <section className="kpis" aria-label="Statut du moteur">
@@ -71,39 +72,54 @@ export default function Home() {
 
               <div className="metricGrid">
                 <div>
-                  <span>Accuracy</span>
+                  <span>Vainqueurs trouvés</span>
                   <strong>{pct(result.accuracy)}</strong>
+                  <small>Accuracy · plus haut = mieux</small>
                 </div>
                 <div>
-                  <span>Log Loss</span>
+                  <span>Erreurs confiantes</span>
                   <strong>{result.log_loss.toFixed(4)}</strong>
+                  <small>Log Loss · plus bas = mieux · 0,693 ≈ 50/50</small>
                 </div>
                 <div>
-                  <span>Brier</span>
+                  <span>Qualité des probabilités</span>
                   <strong>{result.brier_score.toFixed(4)}</strong>
+                  <small>Brier · plus bas = mieux · 0,25 ≈ 50/50</small>
                 </div>
                 <div>
-                  <span>ECE-10</span>
-                  <strong>{result.ece_10.toFixed(4)}</strong>
+                  <span>Calibration</span>
+                  <strong>{pct(result.ece_10)}</strong>
+                  <small>ECE-10 · écart moyen sur 10 tranches</small>
                 </div>
               </div>
             </article>
           );
         })}
 
-        <article className="economicGate">
-          <div>
-            <p className="eyebrow">ECONOMIC VALIDATION</p>
-            <h3>ROI / CLV non validés</h3>
-          </div>
-          <p>
-            Le moteur refuse de revendiquer une rentabilité sans cotes historiques
-            autorisées et horodatées. La couche d’import, no-vig, edge, EV, ROI,
-            drawdown et CLV est prête.
-          </p>
-          <span>Prochaine gate : vraies cotes pré-match</span>
-        </article>
+
       </div>
+
+      <section className="metricGuide">
+        <div>
+          <strong>Comment lire ces scores ?</strong>
+          <p>
+            Accuracy mesure le nombre de vainqueurs trouvés. Brier et Log Loss
+            jugent surtout si les probabilités annoncées sont crédibles.
+            ECE-10 mesure la calibration : un 70 % devrait gagner environ 70 %
+            du temps.
+          </p>
+        </div>
+        <div>
+          <strong>Ce qui compte pour parier</strong>
+          <p>
+            Une bonne prédiction ne suffit pas : la vraie question est de savoir
+            si notre probabilité bat le prix du bookmaker. C'est pour cela que
+            ROI, drawdown et CLV sont suivis séparément ci-dessous.
+          </p>
+        </div>
+      </section>
+
+      <EconomicValidation />
 
       <LiveSelections />
 
