@@ -238,6 +238,7 @@ def fit_final(
     output_dir: Path,
     model_name: str,
     columns: list[str],
+    tour: str,
     calibration_days: int = 180,
 ) -> dict:
     latest = pd.Timestamp(features["match_date"].max())
@@ -265,10 +266,39 @@ def fit_final(
     }
 
     if model_name.endswith("_logit"):
-        coefficients = base.named_steps["logit"].coef_[0]
+        scaler = base.named_steps["scale"]
+        logit_model = base.named_steps["logit"]
+        coefficients = logit_model.coef_[0]
+
         result["standardized_logit_coefficients"] = {
             feature: float(value) for feature, value in zip(columns, coefficients)
         }
+
+        inference_spec = {
+            "schema_version": 1,
+            "tour": tour.upper(),
+            "model_name": model_name,
+            "trained_through": str(latest.date()),
+            "feature_columns": columns,
+            "scaler": {
+                "mean": [float(value) for value in scaler.mean_],
+                "scale": [float(value) for value in scaler.scale_],
+            },
+            "base_logit": {
+                "coefficients": [float(value) for value in logit_model.coef_[0]],
+                "intercept": float(logit_model.intercept_[0]),
+            },
+            "platt": {
+                "coefficient": float(calibrator.coef_[0][0]),
+                "intercept": float(calibrator.intercept_[0]),
+            },
+        }
+
+        (output_dir / "inference_spec.json").write_text(
+            json.dumps(inference_spec, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        result["inference_spec_file"] = "inference_spec.json"
 
     return result
 
@@ -306,6 +336,7 @@ def main() -> None:
         output_dir,
         model_name=champion,
         columns=MODEL_SPECS[champion],
+        tour=args.tour,
     )
 
     report = {
