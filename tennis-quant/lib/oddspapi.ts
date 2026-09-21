@@ -297,7 +297,7 @@ export async function getTennisOdds(
         bookmakers: bookmakers.join(","),
         language: "en",
       },
-      43_200,
+      86_400,
     ),
     oddsApi<MarketCatalogItem[]>(
       apiKey,
@@ -351,28 +351,55 @@ export async function getTennisOdds(
   }
 
   const tournamentIds = Array.from(tournamentMap.keys());
-  const payloads: unknown[] = [];
+  const mergedOddsFixtures = new Map<string, OddsFixture>();
+  let oddsRequestCount = 0;
 
-  // Small batches avoid oversized tournament queries while still keeping the
-  // free-tier request count low. On ordinary ATP/WTA days this is one call.
+  // OddsPapi's live endpoint currently accepts exactly one bookmaker per
+  // odds-by-tournaments request, using the singular "bookmaker" parameter.
+  // We merge Winamax/Pinnacle payloads by fixtureId after retrieval.
   for (const batch of chunks(tournamentIds, 10)) {
-    const payload = await oddsApi<unknown>(
-      apiKey,
-      "odds-by-tournaments",
-      {
-        tournamentIds: batch.join(","),
-        bookmakers: bookmakers.join(","),
-        language: "en",
-        verbosity: "3",
-      },
-      43_200,
-    );
-    payloads.push(payload);
+    for (const bookmaker of bookmakers) {
+      if (oddsRequestCount > 0) {
+        // Respect the documented 1000 ms endpoint cooldown.
+        await new Promise((resolve) => setTimeout(resolve, 1_050));
+      }
+
+      const payload = await oddsApi<unknown>(
+        apiKey,
+        "odds-by-tournaments",
+        {
+          tournamentIds: batch.join(","),
+          bookmaker,
+          language: "en",
+          verbosity: "3",
+        },
+        86_400,
+      );
+      oddsRequestCount += 1;
+
+      for (const fixture of normalizeFixturePayload(payload)) {
+        if (typeof fixture.fixtureId !== "string") continue;
+
+        const existing = mergedOddsFixtures.get(fixture.fixtureId);
+        if (!existing) {
+          mergedOddsFixtures.set(fixture.fixtureId, fixture);
+          continue;
+        }
+
+        mergedOddsFixtures.set(fixture.fixtureId, {
+          ...existing,
+          ...fixture,
+          bookmakerOdds: {
+            ...(existing.bookmakerOdds ?? {}),
+            ...(fixture.bookmakerOdds ?? {}),
+          },
+        });
+      }
+    }
   }
 
   const candidates = moneylineCandidates(catalog);
-  const fixtures = payloads
-    .flatMap((payload) => normalizeFixturePayload(payload))
+  const fixtures = Array.from(mergedOddsFixtures.values())
     .filter(
       (fixture) =>
         typeof fixture.fixtureId === "string" &&
