@@ -134,4 +134,6 @@ jobs:
           fi
 
           git commit -m "ml: refresh generated player state seeds [skip ci]"
+          git fetch origin "${{ github.head_ref }}"
+          git rebase "origin/${{ github.head_ref }}"
           git push origin HEAD:${{ github.head_ref }}
