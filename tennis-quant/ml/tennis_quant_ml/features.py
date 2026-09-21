@@ -61,7 +61,7 @@ def _form(state: PlayerState) -> float:
 
 
 def _load14(state: PlayerState, now: pd.Timestamp) -> float:
-    cutoff = now - pd.Timedelta("14D")
+    cutoff = now - pd.DateOffset(days=14)
     return float(sum(date >= cutoff for date in state.recent_dates))
 
 
@@ -148,6 +148,9 @@ def build_features(matches: pd.DataFrame, tour: str) -> pd.DataFrame:
             {
                 "match_date": date,
                 "tour": tour.upper(),
+                "tournament": str(match.get("tourney_name", "")),
+                "round": str(match.get("round", "")),
+                "match_num": str(match.get("match_num", "")),
                 "surface": surface,
                 "player_a": a["name"],
                 "player_b": b["name"],
@@ -166,7 +169,6 @@ def build_features(matches: pd.DataFrame, tour: str) -> pd.DataFrame:
             }
         )
 
-        # Update all state only after the pre-match snapshot is recorded.
         global_expected = _expected(ws.elo, ls.elo)
         k_global = 28.0
         ws.elo += k_global * (1.0 - global_expected)
