@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-
   "crons": [
     {
       "path": "/api/cron/tennis-sync/atp",
@@ -21,14 +20,6 @@
     {
       "path": "/api/cron/tennis-settle",
       "schedule": "45 4 * * *"
-    },
-    {
-      "path": "/api/cron/tennis-clv",
-      "schedule": "20 * * * *"
-    },
-    {
-      "path": "/api/cron/tennis-health",
-      "schedule": "50 5,17 * * *"
     }
   ]
 }
