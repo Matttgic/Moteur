@@ -166,3 +166,84 @@ export async function getUpcomingTourFixtures(
     meta: payload.meta ?? null,
   };
 }
+
+
+type HistoryCoverageResponse = {
+  data?: unknown;
+  meta?: unknown;
+  [key: string]: unknown;
+};
+
+export async function getHistoryCoverage(apiKey: string) {
+  const response = await fetch(`${BASE_URL}/history/coverage`, {
+    headers: {
+      "X-API-Key": apiKey,
+      Accept: "application/json",
+    },
+    next: { revalidate: 3600 },
+  });
+
+  const payload = (await response.json().catch(() => null)) as HistoryCoverageResponse | null;
+
+  if (!response.ok) {
+    const error = new Error(
+      `Live Tennis API history coverage failed with HTTP ${response.status}`,
+    );
+    Object.assign(error, {
+      status: response.status,
+      payload,
+    });
+    throw error;
+  }
+
+  if (!payload) {
+    throw new Error("Live Tennis API history coverage contract error.");
+  }
+
+  return payload;
+}
+
+export async function getCompletedTourMatches(
+  apiKey: string,
+  tour: LiveTour,
+  from: string,
+  to: string,
+  limit = 100,
+  offset = 0,
+) {
+  const url = new URL(`${BASE_URL}/history/matches`);
+  url.searchParams.set("tour", tour);
+  url.searchParams.set("draw", "singles");
+  url.searchParams.set("from", from);
+  url.searchParams.set("to", to);
+  url.searchParams.set("limit", String(Math.min(Math.max(limit, 1), 100)));
+  url.searchParams.set("offset", String(Math.max(offset, 0)));
+
+  const response = await fetch(url, {
+    headers: {
+      "X-API-Key": apiKey,
+      Accept: "application/json",
+    },
+    next: { revalidate: 300 },
+  });
+
+  const payload = (await response.json().catch(() => null)) as ProviderListResponse | null;
+
+  if (!response.ok) {
+    const error = new Error(
+      `Live Tennis API completed history failed with HTTP ${response.status}`,
+    );
+    Object.assign(error, {
+      status: response.status,
+      payload,
+      retryAfter: response.headers.get("retry-after"),
+    });
+    throw error;
+  }
+
+  if (!payload || !Array.isArray(payload.data)) {
+    throw new Error("Live Tennis API completed history contract error.");
+  }
+
+  return payload;
+}
