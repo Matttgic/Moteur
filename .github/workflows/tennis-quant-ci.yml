@@ -42,6 +42,8 @@ jobs:
     defaults:
       run:
         working-directory: tennis-quant/ml
+    env:
+      PYTHONPATH: .
 
     steps:
       - name: Checkout
@@ -60,8 +62,18 @@ jobs:
 
       - name: ATP smoke backtest
         run: |
-          python -m tennis_quant_ml.train             --tour ATP             --start-year 2023             --end-year 2025             --test-years 2025             --output /tmp/tennis-quant-atp
+          python -m tennis_quant_ml.train \
+            --tour ATP \
+            --start-year 2023 \
+            --end-year 2025 \
+            --test-years 2025 \
+            --output /tmp/tennis-quant-atp
 
       - name: WTA smoke backtest
         run: |
-          python -m tennis_quant_ml.train             --tour WTA             --start-year 2023             --end-year 2025             --test-years 2025             --output /tmp/tennis-quant-wta
+          python -m tennis_quant_ml.train \
+            --tour WTA \
+            --start-year 2023 \
+            --end-year 2025 \
+            --test-years 2025 \
+            --output /tmp/tennis-quant-wta
