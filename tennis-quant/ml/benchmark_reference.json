@@ -1,0 +1,32 @@
+{
+  "validated_at": "2026-09-21",
+  "protocol": {
+    "history_start_year": 2005,
+    "history_end_year": 2026,
+    "test_years": [2022, 2023, 2024, 2025],
+    "validation": "walk-forward",
+    "calibration_window_days": 180,
+    "selection_metric_primary": "log_loss",
+    "selection_metric_secondary": "brier_score"
+  },
+  "ATP": {
+    "champion": "full_logit",
+    "test_n": 10514,
+    "log_loss": 0.6189421338712963,
+    "brier_score": 0.21545884548052083,
+    "accuracy": 0.6500856001521781,
+    "ece_10": 0.009563552978526835
+  },
+  "WTA": {
+    "champion": "full_logit",
+    "test_n": 4485,
+    "log_loss": 0.6134117991289917,
+    "brier_score": 0.21260395436693225,
+    "accuracy": 0.6606465997770345,
+    "ece_10": 0.010751161835019306
+  },
+  "betting_profitability": {
+    "validated": false,
+    "reason": "No authorized timestamped historical odds dataset has been connected yet."
+  }
+}
