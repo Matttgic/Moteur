@@ -1,22 +1,10 @@
 const ODDS_BASE_URL = "https://api.oddspapi.io/v4";
 const TENNIS_SPORT_ID = 12;
+const TENNIS_WINNER_MARKET_ID = 121;
+const TENNIS_WINNER_OUTCOME_1 = "121";
+const TENNIS_WINNER_OUTCOME_2 = "122";
 
 export type TennisTour = "atp" | "wta";
-
-type MarketCatalogItem = {
-  marketId: number;
-  marketLength?: number;
-  marketName?: string;
-  playerProp?: boolean;
-  sportId?: number;
-  handicap?: number;
-  period?: string;
-  marketType?: string;
-  outcomes?: Array<{
-    outcomeId: number;
-    outcomeName?: string;
-  }>;
-};
 
 type PriceNode = {
   active?: boolean;
@@ -61,7 +49,8 @@ type OddsFixture = {
 };
 
 const EXCLUDED_TENNIS =
-  /challenger|itf|utr|junior|davis cup|billie jean king|bjk cup|laver cup|hopman cup|united cup|exhibition/i;
+  /challenger|itf|utr|junior|doubles?|davis cup|billie jean king|bjk cup|laver cup|hopman cup|united cup|exhibition/i;
+
 const GRAND_SLAM =
   /australian open|roland garros|french open|wimbledon|us open|grand slam/i;
 
@@ -142,51 +131,6 @@ function normalizeFixturePayload(payload: unknown): OddsFixture[] {
   return [];
 }
 
-function moneylineCandidates(catalog: MarketCatalogItem[]) {
-  return catalog
-    .filter((market) => {
-      if (market.sportId !== TENNIS_SPORT_ID) return false;
-      if (market.playerProp) return false;
-      if ((market.marketLength ?? market.outcomes?.length) !== 2) return false;
-      if (market.handicap != null && market.handicap !== 0) return false;
-
-      const name = (market.marketName ?? "").toLowerCase();
-      const type = (market.marketType ?? "").toLowerCase();
-      const period = (market.period ?? "").toLowerCase();
-
-      const winnerLike =
-        /winner|moneyline|match winner/.test(name) ||
-        /moneyline|winner/.test(type);
-      const matchPeriod =
-        !period || /fulltime|full time|match|game/.test(period);
-      return winnerLike && matchPeriod;
-    })
-    .sort((a, b) => {
-      const score = (m: MarketCatalogItem) => {
-        const name = (m.marketName ?? "").toLowerCase();
-        if (name === "winner" || name === "match winner") return 0;
-        if (name.includes("moneyline")) return 1;
-        return 2;
-      };
-      return score(a) - score(b);
-    });
-}
-
-function orderedOutcomeIds(market: MarketCatalogItem) {
-  const outcomes = market.outcomes ?? [];
-  if (outcomes.length !== 2) return [];
-
-  const one = outcomes.find((o) =>
-    /^(1|home|player 1|p1)$/i.test((o.outcomeName ?? "").trim()),
-  );
-  const two = outcomes.find((o) =>
-    /^(2|away|player 2|p2)$/i.test((o.outcomeName ?? "").trim()),
-  );
-
-  if (one && two) return [String(one.outcomeId), String(two.outcomeId)];
-  return outcomes.map((o) => String(o.outcomeId));
-}
-
 function activePrice(outcome: OddsOutcome | undefined) {
   const prices = outcome?.players;
   if (!prices) return null;
@@ -212,42 +156,34 @@ function activePrice(outcome: OddsOutcome | undefined) {
 function extractMoneyline(
   fixture: OddsFixture,
   bookmaker: string,
-  candidates: MarketCatalogItem[],
 ) {
   const book = fixture.bookmakerOdds?.[bookmaker];
   if (!book || book.bookmakerIsActive === false || book.suspended) return null;
 
-  for (const candidate of candidates) {
-    const market = book.markets?.[String(candidate.marketId)];
-    if (!market || market.marketActive === false) continue;
+  const market = book.markets?.[String(TENNIS_WINNER_MARKET_ID)];
+  if (!market || market.marketActive === false) return null;
 
-    const [outcome1, outcome2] = orderedOutcomeIds(candidate);
-    if (!outcome1 || !outcome2) continue;
+  const side1 = activePrice(market.outcomes?.[TENNIS_WINNER_OUTCOME_1]);
+  const side2 = activePrice(market.outcomes?.[TENNIS_WINNER_OUTCOME_2]);
+  if (!side1 || !side2) return null;
 
-    const side1 = activePrice(market.outcomes?.[outcome1]);
-    const side2 = activePrice(market.outcomes?.[outcome2]);
-    if (!side1 || !side2) continue;
+  const inv1 = 1 / side1.price;
+  const inv2 = 1 / side2.price;
+  const overround = inv1 + inv2;
 
-    const inv1 = 1 / side1.price;
-    const inv2 = 1 / side2.price;
-    const overround = inv1 + inv2;
-
-    return {
-      marketId: candidate.marketId,
-      marketName: candidate.marketName ?? "Winner",
-      outcome1Id: Number(outcome1),
-      outcome2Id: Number(outcome2),
-      odds1: side1.price,
-      odds2: side2.price,
-      noVigProbability1: inv1 / overround,
-      noVigProbability2: inv2 / overround,
-      overround: overround - 1,
-      changedAt1: side1.changedAt,
-      changedAt2: side2.changedAt,
-    };
-  }
-
-  return null;
+  return {
+    marketId: TENNIS_WINNER_MARKET_ID,
+    marketName: "Winner",
+    outcome1Id: Number(TENNIS_WINNER_OUTCOME_1),
+    outcome2Id: Number(TENNIS_WINNER_OUTCOME_2),
+    odds1: side1.price,
+    odds2: side2.price,
+    noVigProbability1: inv1 / overround,
+    noVigProbability2: inv2 / overround,
+    overround: overround - 1,
+    changedAt1: side1.changedAt,
+    changedAt2: side2.changedAt,
+  };
 }
 
 function boardWindow() {
@@ -284,28 +220,20 @@ export async function getTennisOdds(
 ) {
   const window = boardWindow();
 
-  const [fixturePayload, catalog] = await Promise.all([
-    oddsApi<unknown>(
-      apiKey,
-      "fixtures",
-      {
-        sportId: String(TENNIS_SPORT_ID),
-        from: window.from,
-        to: window.to,
-        statusId: "0",
-        hasOdds: "true",
-        bookmakers: bookmakers.join(","),
-        language: "en",
-      },
-      86_400,
-    ),
-    oddsApi<MarketCatalogItem[]>(
-      apiKey,
-      "markets",
-      { language: "en" },
-      86_400,
-    ),
-  ]);
+  const fixturePayload = await oddsApi<unknown>(
+    apiKey,
+    "fixtures",
+    {
+      sportId: String(TENNIS_SPORT_ID),
+      from: window.from,
+      to: window.to,
+      statusId: "0",
+      hasOdds: "true",
+      bookmakers: bookmakers.join(","),
+      language: "en",
+    },
+    86_400,
+  );
 
   const boardFixtures = normalizeFixturePayload(fixturePayload)
     .filter(
@@ -322,7 +250,9 @@ export async function getTennisOdds(
       tournamentCount: 0,
       tournaments: [],
       bookmakers,
-      moneylineMarketCandidates: [],
+      moneylineMarketCandidates: [
+        { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
+      ],
       requestWindow: window,
       fixtures: [],
     };
@@ -336,7 +266,11 @@ export async function getTennisOdds(
 
   const tournamentMap = new Map<
     number,
-    { tournamentId: number; tournamentName: string | null; categoryName: string | null }
+    {
+      tournamentId: number;
+      tournamentName: string | null;
+      categoryName: string | null;
+    }
   >();
 
   for (const fixture of boardFixtures) {
@@ -354,13 +288,9 @@ export async function getTennisOdds(
   const mergedOddsFixtures = new Map<string, OddsFixture>();
   let oddsRequestCount = 0;
 
-  // OddsPapi's live endpoint currently accepts exactly one bookmaker per
-  // odds-by-tournaments request, using the singular "bookmaker" parameter.
-  // We merge Winamax/Pinnacle payloads by fixtureId after retrieval.
   for (const batch of chunks(tournamentIds, 10)) {
     for (const bookmaker of bookmakers) {
       if (oddsRequestCount > 0) {
-        // Respect the documented 1000 ms endpoint cooldown.
         await new Promise((resolve) => setTimeout(resolve, 1_050));
       }
 
@@ -398,7 +328,6 @@ export async function getTennisOdds(
     }
   }
 
-  const candidates = moneylineCandidates(catalog);
   const fixtures = Array.from(mergedOddsFixtures.values())
     .filter(
       (fixture) =>
@@ -411,7 +340,7 @@ export async function getTennisOdds(
       const prices = Object.fromEntries(
         bookmakers.map((book) => [
           book,
-          extractMoneyline(fixture, book, candidates),
+          extractMoneyline(fixture, book),
         ]),
       );
 
@@ -436,10 +365,9 @@ export async function getTennisOdds(
     tournamentCount: tournamentMap.size,
     tournaments: Array.from(tournamentMap.values()),
     bookmakers,
-    moneylineMarketCandidates: candidates.slice(0, 10).map((market) => ({
-      marketId: market.marketId,
-      marketName: market.marketName ?? null,
-    })),
+    moneylineMarketCandidates: [
+      { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
+    ],
     requestWindow: window,
     fixtures,
   };
