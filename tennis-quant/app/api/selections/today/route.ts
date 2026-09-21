@@ -151,6 +151,76 @@ function classify(edge: number, ev: number) {
   return { tier: "NO_BET" as const, stakeUnits: 0 };
 }
 
+function median(values: number[]) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+function marketGuard(input: {
+  side: "A" | "B";
+  executionQuotes: Array<{
+    bookmaker: string;
+    quote: NonNullable<ReturnType<typeof alignQuote>>;
+  }>;
+  odds: number;
+  edge: number;
+  ev: number;
+  modelMode: "full_logit" | "rank_only_fallback";
+  sharpProbability: number | null;
+}) {
+  const sideOdds = input.executionQuotes
+    .map(({ quote }) => (input.side === "A" ? quote.oddsA : quote.oddsB))
+    .filter((value) => Number.isFinite(value) && value > 1);
+
+  const medianSelectedOdds = median(sideOdds);
+  const priceSpreadRatio =
+    medianSelectedOdds && medianSelectedOdds > 0
+      ? input.odds / medianSelectedOdds
+      : null;
+
+  const reasons: string[] = [];
+
+  if (!Number.isFinite(input.odds) || input.odds <= 1 || input.odds > 15) {
+    reasons.push("odds_outlier");
+  }
+
+  if (
+    sideOdds.length >= 2 &&
+    priceSpreadRatio !== null &&
+    priceSpreadRatio > 1.35
+  ) {
+    reasons.push("cross_book_price_outlier");
+  }
+
+  if (
+    input.sharpProbability == null &&
+    sideOdds.length < 2 &&
+    (input.edge > 0.2 || input.ev > 0.5)
+  ) {
+    reasons.push("unconfirmed_extreme_edge");
+  }
+
+  if (
+    input.modelMode === "rank_only_fallback" &&
+    input.odds > 4 &&
+    input.sharpProbability == null
+  ) {
+    reasons.push("fallback_longshot_without_sharp_confirmation");
+  }
+
+  return {
+    blocked: reasons.length > 0,
+    reasons,
+    sourceCount: sideOdds.length,
+    medianSelectedOdds,
+    priceSpreadRatio,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const rawTour =
     request.nextUrl.searchParams.get("tour")?.toLowerCase() ?? "atp";
@@ -316,13 +386,26 @@ export async function GET(request: NextRequest) {
           ? executable.marketProbabilityA
           : executable.marketProbabilityB;
       const player = side === "A" ? p1.name : p2.name;
-      const classification = classify(edge, ev);
 
       const sharpProbability = sharp
         ? side === "A"
           ? sharp.marketProbabilityA
           : sharp.marketProbabilityB
         : null;
+
+      const guard = marketGuard({
+        side,
+        executionQuotes,
+        odds,
+        edge,
+        ev,
+        modelMode: model.mode,
+        sharpProbability,
+      });
+
+      const classification = guard.blocked
+        ? { tier: "NO_BET" as const, stakeUnits: 0 }
+        : classify(edge, ev);
 
       analyzed.push({
         matchId: live.id ?? null,
@@ -358,6 +441,9 @@ export async function GET(request: NextRequest) {
           marketName: executable.marketName,
           pinnacleNoVigProbabilityA: sharp?.marketProbabilityA ?? null,
           pinnacleNoVigProbabilityB: sharp?.marketProbabilityB ?? null,
+          sourceCount: guard.sourceCount,
+          medianSelectedOdds: guard.medianSelectedOdds,
+          priceSpreadRatio: guard.priceSpreadRatio,
         },
         decision: {
           side,
@@ -374,8 +460,13 @@ export async function GET(request: NextRequest) {
           tier: classification.tier,
           stakeUnits: classification.stakeUnits,
           bet:
-            classification.tier === "PREMIUM" ||
-            classification.tier === "VALUE",
+            !guard.blocked &&
+            (classification.tier === "PREMIUM" ||
+              classification.tier === "VALUE"),
+          guard: {
+            blocked: guard.blocked,
+            reasons: guard.reasons,
+          },
         },
       });
     }

@@ -1,19 +1,10 @@
 import benchmark from "@/ml/benchmark_reference.json";
-import { demoMatches } from "@/lib/demo-data";
-import { predictMatch } from "@/lib/model";
+import LiveSelections from "./live-selections";
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
-const signedPct = (value: number) =>
-  `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
-
 const tours = ["ATP", "WTA"] as const;
 
 export default function Home() {
-  const rows = demoMatches.map((match) => ({
-    match,
-    prediction: predictMatch(match)
-  }));
-
   const totalOos =
     benchmark.ATP.test_n +
     benchmark.WTA.test_n;
@@ -114,99 +105,7 @@ export default function Home() {
         </article>
       </div>
 
-      <section className="sectionHeader opportunitiesHeader">
-        <div>
-          <p className="eyebrow">ENGINE PREVIEW</p>
-          <h2>Lecture quantitative</h2>
-        </div>
-        <p>
-          Les cartes suivantes utilisent des données fictives pour démontrer le
-          workflow produit. Elles ne sont pas des paris du jour.
-        </p>
-      </section>
-
-      <section className="notice">
-        <strong>Données de démonstration.</strong> Aucun joueur, match ou prix
-        ci-dessous ne doit être interprété comme une donnée live réelle.
-      </section>
-
-      <div className="cards demoCards">
-        {rows.map(({ match, prediction }) => {
-          const side =
-            prediction.recommendation === "BET_A"
-              ? prediction.playerA
-              : prediction.recommendation === "BET_B"
-                ? prediction.playerB
-                : "NO BET";
-          const chosenEdge =
-            prediction.recommendation === "BET_B"
-              ? prediction.edgeB
-              : prediction.edgeA;
-          const chosenEv =
-            prediction.recommendation === "BET_B"
-              ? prediction.evB
-              : prediction.evA;
-
-          return (
-            <article
-              className="matchCard"
-              key={`${match.playerA.name}-${match.playerB.name}`}
-            >
-              <div className="matchTop">
-                <div>
-                  <span className="pill">{match.tour}</span>
-                  <span className="muted">{match.surface}</span>
-                </div>
-                <span className={`tier tier-${prediction.tier.toLowerCase()}`}>
-                  {prediction.tier}
-                </span>
-              </div>
-
-              <h3>
-                {match.playerA.name} <span>vs</span> {match.playerB.name}
-              </h3>
-
-              <div className="probGrid">
-                <div>
-                  <span>{prediction.playerA}</span>
-                  <strong>{pct(prediction.probabilityA)}</strong>
-                  <small>Cote juste {prediction.fairOddsA.toFixed(2)}</small>
-                </div>
-                <div>
-                  <span>{prediction.playerB}</span>
-                  <strong>{pct(prediction.probabilityB)}</strong>
-                  <small>Cote juste {prediction.fairOddsB.toFixed(2)}</small>
-                </div>
-              </div>
-
-              <div className="decision">
-                <div>
-                  <span>Décision</span>
-                  <strong>{side}</strong>
-                </div>
-                <div>
-                  <span>Edge</span>
-                  <strong>{signedPct(chosenEdge)}</strong>
-                </div>
-                <div>
-                  <span>EV</span>
-                  <strong>{signedPct(chosenEv)}</strong>
-                </div>
-                <div>
-                  <span>Mise</span>
-                  <strong>{prediction.stakeUnits.toFixed(2)}u</strong>
-                </div>
-              </div>
-
-              <ul>
-                {prediction.reasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
-                ))}
-              </ul>
-            </article>
-          );
-        })}
-      </div>
+      <LiveSelections />
 
       <section className="method">
         <div>

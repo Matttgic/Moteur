@@ -452,3 +452,204 @@ footer {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+
+.liveSection {
+  margin-top: 42px;
+}
+
+.liveHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.liveHeader > div:first-child {
+  max-width: 680px;
+}
+
+.liveHeader p {
+  margin-bottom: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.liveControls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tourTabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.tourTab,
+.refreshButton {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.tourTab {
+  min-width: 56px;
+  padding: 9px 12px;
+}
+
+.tourTab.active {
+  border-color: #3e8a6e;
+  background: rgba(115, 230, 183, 0.1);
+  color: var(--accent-2);
+}
+
+.refreshButton {
+  padding: 12px 14px;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.refreshButton:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.liveMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.liveMeta span,
+.liveTags span {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.liveMeta strong {
+  color: var(--text);
+}
+
+.liveState {
+  display: grid;
+  gap: 6px;
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(16, 28, 25, 0.86);
+}
+
+.liveState span {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.liveError {
+  border-color: #714646;
+}
+
+.noBetState {
+  border-color: #64542d;
+}
+
+.liveCards {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.liveBetCard {
+  position: relative;
+  overflow: hidden;
+}
+
+.liveBetCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+.liveTournament {
+  margin: 18px 0 -8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pickHero {
+  display: grid;
+  gap: 7px;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid #3e8a6e;
+  border-radius: 16px;
+  background: rgba(115, 230, 183, 0.08);
+}
+
+.pickHero > span {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.pickHero > strong {
+  font-size: 25px;
+}
+
+.pickHero > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--accent-2);
+  font-size: 14px;
+}
+
+.liveDecision {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.liveTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.liveUpdated {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .liveHeader {
+    display: block;
+  }
+
+  .liveControls {
+    justify-content: space-between;
+    margin-top: 16px;
+  }
+
+  .liveCards {
+    grid-template-columns: 1fr;
+  }
+
+  .liveDecision {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
