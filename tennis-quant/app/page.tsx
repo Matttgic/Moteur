@@ -1,6 +1,8 @@
 import benchmark from "@/ml/benchmark_reference.json";
 import LiveSelections from "./live-selections";
 import EconomicValidation from "./economic-validation";
+import SystemHealth from "./system-health";
+import ShadowLab from "./shadow-lab";
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const tours = ["ATP", "WTA"] as const;
@@ -41,6 +43,8 @@ export default function Home() {
           <strong>Walk-forward</strong>
         </article>
       </section>
+
+      <SystemHealth />
 
       <section className="sectionHeader">
         <div>
@@ -121,12 +125,14 @@ export default function Home() {
 
       <EconomicValidation />
 
+      <ShadowLab />
+
       <LiveSelections />
 
       <section className="method">
         <div>
           <p className="eyebrow">GOUVERNANCE DU MODÈLE</p>
-          <h2>Ce que la V1 contrôle déjà</h2>
+          <h2>Ce que le moteur contrôle déjà</h2>
         </div>
         <div className="methodGrid">
           <p><strong>1.</strong> Validation temporelle sans mélange futur/passé.</p>
@@ -134,7 +140,9 @@ export default function Home() {
           <p><strong>3.</strong> Comparaison à des modèles plus simples avant promotion.</p>
           <p><strong>4.</strong> Retrait de marge avant le calcul d’edge.</p>
           <p><strong>5.</strong> NO BET reste une sortie de premier rang.</p>
-          <p><strong>6.</strong> Aucun ROI affiché avant preuve économique réelle.</p>
+          <p><strong>6.</strong> ROI, drawdown et CLV mesurés sur les picks réellement sortis.</p>
+          <p><strong>7.</strong> Settlement et contrôle santé automatisés par cron.</p>
+          <p><strong>8.</strong> Variantes shadow séparées du champion, sans auto-promotion.</p>
         </div>
       </section>
 
