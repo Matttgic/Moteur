@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  recommendedSyncWindow,
-  syncCompletedHistory,
-} from "@/lib/history-ingest";
-import type { LiveTour } from "@/lib/live-tennis";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
+
+const EDGE_RUNTIME_URL =
+  "https://uciolnhvddbindxajzti.supabase.co/functions/v1/tennis-basic-backfill";
 
 export async function GET(
   request: NextRequest,
@@ -40,20 +38,51 @@ export async function GET(
     );
   }
 
+  const to = new Date();
+  const from = new Date(to.getTime() - 3 * 24 * 60 * 60 * 1000);
+
   try {
-    const window = await recommendedSyncWindow(tour as LiveTour);
-    const result = await syncCompletedHistory({
-      apiKey: liveKey,
-      tour: tour as LiveTour,
-      from: window.from,
-      to: window.to,
+    const edgeResponse = await fetch(EDGE_RUNTIME_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        action: "sync",
+        cronSecret,
+        liveApiKey: liveKey,
+        tour,
+        from: from.toISOString(),
+        to: to.toISOString(),
+      }),
     });
+
+    const payload = await edgeResponse.json().catch(() => null);
+
+    if (!edgeResponse.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          tour: tour.toUpperCase(),
+          error:
+            payload && typeof payload === "object"
+              ? payload
+              : `edge_http_${edgeResponse.status}`,
+        },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       ok: true,
       tour: tour.toUpperCase(),
-      window,
-      result,
+      window: {
+        from: from.toISOString(),
+        to: to.toISOString(),
+      },
+      result: payload?.result ?? payload,
       schedule: request.headers.get("x-vercel-cron-schedule"),
       completedAt: new Date().toISOString(),
     });

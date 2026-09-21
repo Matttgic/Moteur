@@ -35,6 +35,41 @@ export type ModelDecisionInput = {
   reason: string;
 };
 
+const EDGE_RUNTIME_URL =
+  "https://uciolnhvddbindxajzti.supabase.co/functions/v1/tennis-basic-backfill";
+
+async function edgeRuntimeRequest(
+  action: "state_lookup" | "sync_freshness",
+  payload: Record<string, unknown>,
+) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return null;
+
+  const response = await fetch(EDGE_RUNTIME_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      action,
+      cronSecret,
+      ...payload,
+    }),
+  });
+
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new Error(
+      `Supabase Edge runtime ${action} failed with HTTP ${response.status}`,
+    );
+  }
+
+  return body;
+}
+
 const numeric = (value: unknown, fallback = 0) => {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -204,13 +239,28 @@ export async function getHistorySyncFreshness(
   now = new Date(),
 ): Promise<HistorySyncFreshness> {
   const supabase = getSupabaseServerClient() as any;
+
   if (!supabase) {
+    const payload = await edgeRuntimeRequest("sync_freshness", { tour });
+    const freshness = payload?.freshness;
+
+    if (!freshness) {
+      return {
+        fresh: false,
+        windowTo: null,
+        finishedAt: null,
+        ageHours: null,
+        reason: "edge_runtime_not_configured",
+      };
+    }
+
     return {
-      fresh: false,
-      windowTo: null,
-      finishedAt: null,
-      ageHours: null,
-      reason: "supabase_not_configured",
+      fresh: Boolean(freshness.fresh),
+      windowTo: freshness.windowTo ?? null,
+      finishedAt: freshness.finishedAt ?? null,
+      ageHours:
+        freshness.ageHours == null ? null : numeric(freshness.ageHours),
+      reason: String(freshness.reason ?? "unknown"),
     };
   }
 
@@ -317,7 +367,44 @@ export async function loadPlayerStatesForNames(
   names: string[],
 ) {
   const supabase = getSupabaseServerClient() as any;
-  if (!supabase) return new Map<string, PlayerStateSnapshot>();
+
+  if (!supabase) {
+    const payload = await edgeRuntimeRequest("state_lookup", {
+      tour,
+      names,
+    });
+    const result = new Map<string, PlayerStateSnapshot>();
+
+    for (const row of payload?.states ?? []) {
+      const normalizedName = String(row?.normalizedName ?? "");
+      if (!normalizedName) continue;
+
+      result.set(normalizedName, {
+        playerId: String(row?.playerId ?? ""),
+        name: String(row?.name ?? ""),
+        normalizedName,
+        tour,
+        elo: numeric(row?.elo, 1500),
+        hardElo: numeric(row?.hardElo, 1500),
+        clayElo: numeric(row?.clayElo, 1500),
+        grassElo: numeric(row?.grassElo, 1500),
+        carpetElo: numeric(row?.carpetElo, 1500),
+        recentResults: asNumberArray(row?.recentResults).slice(-10),
+        recentMatchDates: asStringArray(row?.recentMatchDates).slice(-30),
+        serviceGames: numeric(row?.serviceGames),
+        serviceHolds: numeric(row?.serviceHolds),
+        returnGames: numeric(row?.returnGames),
+        returnBreaks: numeric(row?.returnBreaks),
+        dataQuality: numeric(row?.dataQuality),
+        lastMatchAt:
+          typeof row?.lastMatchAt === "string" ? row.lastMatchAt : null,
+        stateAsOf: String(row?.stateAsOf ?? new Date(0).toISOString()),
+        source: String(row?.source ?? "edge-runtime"),
+      });
+    }
+
+    return result;
+  }
 
   const normalizedNames = Array.from(
     new Set(names.map(normalizePlayerName).filter(Boolean)),
