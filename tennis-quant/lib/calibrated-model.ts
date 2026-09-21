@@ -35,6 +35,23 @@ const RANK_ONLY_SPECS: Record<ModelTour, InferenceSpec> = {
   WTA: wtaRankOnly as InferenceSpec,
 };
 
+export const FULL_MODEL_BENCHMARK = {
+  ATP: {
+    testN: 10514,
+    logLoss: 0.6189421338712963,
+    brier: 0.21545884548052083,
+    accuracy: 0.6500856001521781,
+    ece10: 0.009563552978526835,
+  },
+  WTA: {
+    testN: 4485,
+    logLoss: 0.6134117991289917,
+    brier: 0.21260395436693225,
+    accuracy: 0.6606465997770345,
+    ece10: 0.010751161835019306,
+  },
+} as const;
+
 export const RANK_ONLY_BENCHMARK = {
   ATP: {
     testN: 10514,

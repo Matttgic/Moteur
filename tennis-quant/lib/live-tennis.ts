@@ -21,6 +21,13 @@ export type LiveMatch = {
   round?: string | null;
   status?: "upcoming" | "live" | "completed" | "cancelled";
   event_status?: string | null;
+  event_status_updated_at?: string | null;
+  updated_at?: string | null;
+  live_at?: string | null;
+  winner?: 1 | 2 | null;
+  outcome?: "completed" | "retired" | "walkover" | "default" | "abandoned" | "unresolved" | null;
+  score?: unknown;
+  tape?: unknown;
   is_doubles?: boolean;
   scheduled_time?: string | null;
   players?: {
@@ -30,9 +37,18 @@ export type LiveMatch = {
   [key: string]: unknown;
 };
 
-type ProviderListResponse = {
+export type ProviderListMeta = {
+  count?: number;
+  total?: number;
+  limit?: number;
+  offset?: number;
+  has_more?: boolean;
+  next_cursor?: string | null;
+};
+
+export type ProviderListResponse = {
   data?: LiveMatch[];
-  meta?: unknown;
+  meta?: ProviderListMeta;
 };
 
 const EXCLUDED_TEAM_COMPETITIONS = [
@@ -53,7 +69,7 @@ function isCancelled(match: LiveMatch) {
   );
 }
 
-function isExcludedCompetition(match: LiveMatch) {
+export function isExcludedCompetition(match: LiveMatch) {
   const tournament = match.tournament ?? "";
   return EXCLUDED_TEAM_COMPETITIONS.some((pattern) => pattern.test(tournament));
 }

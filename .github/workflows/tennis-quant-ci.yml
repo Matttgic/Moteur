@@ -1,5 +1,8 @@
 name: Tennis Quant CI
 
+permissions:
+  contents: write
+
 on:
   push:
     branches:
@@ -87,6 +90,7 @@ jobs:
             /tmp/tennis-quant-atp/inference_spec.json
             /tmp/tennis-quant-atp/rank_only_fallback/inference_spec.json
             /tmp/tennis-quant-atp/report.json
+            /tmp/tennis-quant-atp/player_state_seed.json
           retention-days: 7
 
       - name: Upload WTA inference artifact
@@ -97,4 +101,39 @@ jobs:
             /tmp/tennis-quant-wta/inference_spec.json
             /tmp/tennis-quant-wta/rank_only_fallback/inference_spec.json
             /tmp/tennis-quant-wta/report.json
+            /tmp/tennis-quant-wta/player_state_seed.json
           retention-days: 7
+
+      - name: Commit generated player state seeds
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          target = Path("../generated")
+          target.mkdir(parents=True, exist_ok=True)
+
+          for tour in ("atp", "wta"):
+              source = Path(f"/tmp/tennis-quant-{tour}/player_state_seed.json")
+              payload = json.loads(source.read_text(encoding="utf-8"))
+              destination = target / f"{tour}-player-state-seed.json"
+              destination.write_text(
+                  json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
+                  encoding="utf-8",
+              )
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ../generated/atp-player-state-seed.json ../generated/wta-player-state-seed.json
+
+          if git diff --cached --quiet; then
+            echo "Generated state seeds unchanged."
+            exit 0
+          fi
+
+          git commit -m "ml: refresh generated player state seeds [skip ci]"
+          git fetch origin "${{ github.head_ref }}"
+          git rebase "origin/${{ github.head_ref }}"
+          git push origin HEAD:${{ github.head_ref }}

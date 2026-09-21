@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/tennis-sync/atp",
+      "schedule": "5 3 * * *"
+    },
+    {
+      "path": "/api/cron/tennis-sync/wta",
+      "schedule": "25 3 * * *"
+    }
+  ]
+}

@@ -80,14 +80,66 @@ export type Database = {
           },
         ]
       }
+      tennis_ingestion_runs: {
+        Row: {
+          details: Json
+          fetched_matches: number
+          finished_at: string | null
+          id: string
+          job_name: string
+          processed_matches: number
+          provider_requests: number
+          skipped_matches: number
+          started_at: string
+          status: string
+          tour: string | null
+          window_from: string | null
+          window_to: string | null
+        }
+        Insert: {
+          details?: Json
+          fetched_matches?: number
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          processed_matches?: number
+          provider_requests?: number
+          skipped_matches?: number
+          started_at?: string
+          status: string
+          tour?: string | null
+          window_from?: string | null
+          window_to?: string | null
+        }
+        Update: {
+          details?: Json
+          fetched_matches?: number
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          processed_matches?: number
+          provider_requests?: number
+          skipped_matches?: number
+          started_at?: string
+          status?: string
+          tour?: string | null
+          window_from?: string | null
+          window_to?: string | null
+        }
+        Relationships: []
+      }
       tennis_matches: {
         Row: {
+          completed_at: string | null
           created_at: string
+          final_score: Json | null
           id: string
           indoor: boolean
+          outcome: string | null
           player_a_id: string
           player_b_id: string
           provider_match_id: string | null
+          provider_updated_at: string | null
           round: string | null
           scheduled_at: string
           status: string
@@ -98,12 +150,16 @@ export type Database = {
           winner_id: string | null
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
+          final_score?: Json | null
           id?: string
           indoor?: boolean
+          outcome?: string | null
           player_a_id: string
           player_b_id: string
           provider_match_id?: string | null
+          provider_updated_at?: string | null
           round?: string | null
           scheduled_at: string
           status?: string
@@ -114,12 +170,16 @@ export type Database = {
           winner_id?: string | null
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
+          final_score?: Json | null
           id?: string
           indoor?: boolean
+          outcome?: string | null
           player_a_id?: string
           player_b_id?: string
           provider_match_id?: string | null
+          provider_updated_at?: string | null
           round?: string | null
           scheduled_at?: string
           status?: string
@@ -284,6 +344,83 @@ export type Database = {
           },
         ]
       }
+      tennis_player_states: {
+        Row: {
+          carpet_elo: number
+          clay_elo: number
+          data_quality: number
+          elo: number
+          feature_version: string
+          grass_elo: number
+          hard_elo: number
+          last_match_at: string | null
+          player_id: string
+          recent_match_dates: Json
+          recent_results: Json
+          return_breaks: number
+          return_games: number
+          service_games: number
+          service_holds: number
+          service_sample_matches: number
+          source: string
+          state_as_of: string
+          tour: string
+          updated_at: string
+        }
+        Insert: {
+          carpet_elo?: number
+          clay_elo?: number
+          data_quality?: number
+          elo?: number
+          feature_version?: string
+          grass_elo?: number
+          hard_elo?: number
+          last_match_at?: string | null
+          player_id: string
+          recent_match_dates?: Json
+          recent_results?: Json
+          return_breaks?: number
+          return_games?: number
+          service_games?: number
+          service_holds?: number
+          service_sample_matches?: number
+          source?: string
+          state_as_of?: string
+          tour: string
+          updated_at?: string
+        }
+        Update: {
+          carpet_elo?: number
+          clay_elo?: number
+          data_quality?: number
+          elo?: number
+          feature_version?: string
+          grass_elo?: number
+          hard_elo?: number
+          last_match_at?: string | null
+          player_id?: string
+          recent_match_dates?: Json
+          recent_results?: Json
+          return_breaks?: number
+          return_games?: number
+          service_games?: number
+          service_holds?: number
+          service_sample_matches?: number
+          source?: string
+          state_as_of?: string
+          tour?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tennis_player_states_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "tennis_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tennis_players: {
         Row: {
           birth_date: string | null
@@ -292,6 +429,7 @@ export type Database = {
           handedness: string | null
           id: string
           name: string
+          normalized_name: string
           provider_player_id: string | null
           tour: string
           updated_at: string
@@ -303,6 +441,7 @@ export type Database = {
           handedness?: string | null
           id?: string
           name: string
+          normalized_name: string
           provider_player_id?: string | null
           tour: string
           updated_at?: string
@@ -314,6 +453,7 @@ export type Database = {
           handedness?: string | null
           id?: string
           name?: string
+          normalized_name?: string
           provider_player_id?: string | null
           tour?: string
           updated_at?: string

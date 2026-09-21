@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  rankOnlyProbability,
+  FULL_MODEL_BENCHMARK,
   RANK_ONLY_BENCHMARK,
   type ModelTour,
 } from "@/lib/calibrated-model";
@@ -13,23 +13,18 @@ import {
   getTennisOdds,
   type TennisTour,
 } from "@/lib/oddspapi";
+import {
+  loadPlayerStatesForNames,
+  normalizePlayerName,
+  probabilityForLiveMatch,
+} from "@/lib/player-state";
 
 export const runtime = "nodejs";
 
 const ALLOWED_TOURS = new Set<LiveTour>(["atp", "wta"]);
 
-function normalizeName(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
 function looseName(value: string) {
-  const parts = normalizeName(value).split(" ").filter(Boolean);
+  const parts = normalizePlayerName(value).split(" ").filter(Boolean);
   if (!parts.length) return "";
   const last = parts.at(-1) ?? "";
   const firstInitial = parts[0]?.[0] ?? "";
@@ -37,7 +32,7 @@ function looseName(value: string) {
 }
 
 function pairKey(a: string, b: string, loose = false) {
-  const fn = loose ? looseName : normalizeName;
+  const fn = loose ? looseName : normalizePlayerName;
   return [fn(a), fn(b)].sort().join("|");
 }
 
@@ -65,15 +60,10 @@ function findOddsFixture(
   const candidates = oddsFixtures
     .filter((fixture) => {
       if (!fixture.participant1Name || !fixture.participant2Name) return false;
-      const exact =
-        pairKey(fixture.participant1Name, fixture.participant2Name) === exactKey;
-      const loose =
-        pairKey(
-          fixture.participant1Name,
-          fixture.participant2Name,
-          true,
-        ) === looseKey;
-      return exact || loose;
+      return (
+        pairKey(fixture.participant1Name, fixture.participant2Name) === exactKey ||
+        pairKey(fixture.participant1Name, fixture.participant2Name, true) === looseKey
+      );
     })
     .map((fixture) => ({
       fixture,
@@ -93,82 +83,53 @@ function alignQuote(
 ) {
   const p1 = live.players?.p1?.name;
   const p2 = live.players?.p2?.name;
-  const q = oddsFixture.prices[bookmaker];
+  const quote = oddsFixture.prices[bookmaker];
 
-  if (!p1 || !p2 || !q) return null;
+  if (!p1 || !p2 || !quote) return null;
   if (!oddsFixture.participant1Name || !oddsFixture.participant2Name) return null;
 
-  const liveP1 = normalizeName(p1);
-  const liveP2 = normalizeName(p2);
-  const oddsP1 = normalizeName(oddsFixture.participant1Name);
-  const oddsP2 = normalizeName(oddsFixture.participant2Name);
+  const live1 = normalizePlayerName(p1);
+  const live2 = normalizePlayerName(p2);
+  const odds1 = normalizePlayerName(oddsFixture.participant1Name);
+  const odds2 = normalizePlayerName(oddsFixture.participant2Name);
 
-  if (liveP1 === oddsP1 && liveP2 === oddsP2) {
-    return {
-      oddsA: q.odds1,
-      oddsB: q.odds2,
-      marketProbabilityA: q.noVigProbability1,
-      marketProbabilityB: q.noVigProbability2,
-      overround: q.overround,
-      marketId: q.marketId,
-      marketName: q.marketName,
-    };
-  }
+  const direct =
+    (live1 === odds1 && live2 === odds2) ||
+    (looseName(p1) === looseName(oddsFixture.participant1Name) &&
+      looseName(p2) === looseName(oddsFixture.participant2Name));
 
-  if (liveP1 === oddsP2 && liveP2 === oddsP1) {
-    return {
-      oddsA: q.odds2,
-      oddsB: q.odds1,
-      marketProbabilityA: q.noVigProbability2,
-      marketProbabilityB: q.noVigProbability1,
-      overround: q.overround,
-      marketId: q.marketId,
-      marketName: q.marketName,
-    };
-  }
+  const reverse =
+    (live1 === odds2 && live2 === odds1) ||
+    (looseName(p1) === looseName(oddsFixture.participant2Name) &&
+      looseName(p2) === looseName(oddsFixture.participant1Name));
 
-  const looseLiveP1 = looseName(p1);
-  const looseLiveP2 = looseName(p2);
-  const looseOddsP1 = looseName(oddsFixture.participant1Name);
-  const looseOddsP2 = looseName(oddsFixture.participant2Name);
+  if (!direct && !reverse) return null;
 
-  if (looseLiveP1 === looseOddsP1 && looseLiveP2 === looseOddsP2) {
-    return {
-      oddsA: q.odds1,
-      oddsB: q.odds2,
-      marketProbabilityA: q.noVigProbability1,
-      marketProbabilityB: q.noVigProbability2,
-      overround: q.overround,
-      marketId: q.marketId,
-      marketName: q.marketName,
-    };
-  }
-
-  if (looseLiveP1 === looseOddsP2 && looseLiveP2 === looseOddsP1) {
-    return {
-      oddsA: q.odds2,
-      oddsB: q.odds1,
-      marketProbabilityA: q.noVigProbability2,
-      marketProbabilityB: q.noVigProbability1,
-      overround: q.overround,
-      marketId: q.marketId,
-      marketName: q.marketName,
-    };
-  }
-
-  return null;
+  return direct
+    ? {
+        oddsA: quote.odds1,
+        oddsB: quote.odds2,
+        marketProbabilityA: quote.noVigProbability1,
+        marketProbabilityB: quote.noVigProbability2,
+        overround: quote.overround,
+        marketId: quote.marketId,
+        marketName: quote.marketName,
+      }
+    : {
+        oddsA: quote.odds2,
+        oddsB: quote.odds1,
+        marketProbabilityA: quote.noVigProbability2,
+        marketProbabilityB: quote.noVigProbability1,
+        overround: quote.overround,
+        marketId: quote.marketId,
+        marketName: quote.marketName,
+      };
 }
 
 function classify(edge: number, ev: number) {
-  if (edge >= 0.08 && ev >= 0.05) {
-    return { tier: "PREMIUM" as const, stakeUnits: 0.5 };
-  }
-  if (edge >= 0.06 && ev >= 0.03) {
-    return { tier: "VALUE" as const, stakeUnits: 0.25 };
-  }
-  if (edge >= 0.03 && ev > 0) {
-    return { tier: "LEAN" as const, stakeUnits: 0 };
-  }
+  if (edge >= 0.08 && ev >= 0.05) return { tier: "PREMIUM" as const, stakeUnits: 0.5 };
+  if (edge >= 0.06 && ev >= 0.03) return { tier: "VALUE" as const, stakeUnits: 0.25 };
+  if (edge >= 0.03 && ev > 0) return { tier: "LEAN" as const, stakeUnits: 0 };
   return { tier: "NO_BET" as const, stakeUnits: 0 };
 }
 
@@ -213,7 +174,12 @@ export async function GET(request: NextRequest) {
     ]);
 
     const modelTour = rawTour.toUpperCase() as ModelTour;
-    const benchmark = RANK_ONLY_BENCHMARK[modelTour];
+    const playerNames = liveResult.data.flatMap((match) =>
+      [match.players?.p1?.name, match.players?.p2?.name].filter(
+        (value): value is string => Boolean(value),
+      ),
+    );
+    const states = await loadPlayerStatesForNames(modelTour, playerNames);
 
     const analyzed = [];
     const rejected = [];
@@ -267,23 +233,21 @@ export async function GET(request: NextRequest) {
       }
 
       const sharp = alignQuote(live, oddsFixture, "pinnacle");
-      const probabilityA = rankOnlyProbability(
-        modelTour,
-        p1.ranking,
-        p2.ranking,
-      );
-      const probabilityB = 1 - probabilityA;
+      const stateA = states.get(normalizePlayerName(p1.name)) ?? null;
+      const stateB = states.get(normalizePlayerName(p2.name)) ?? null;
+      const model = probabilityForLiveMatch(modelTour, live, stateA, stateB);
 
-      const edgeA = probabilityA - executable.marketProbabilityA;
-      const edgeB = probabilityB - executable.marketProbabilityB;
-      const evA = probabilityA * executable.oddsA - 1;
-      const evB = probabilityB * executable.oddsB - 1;
+      const edgeA = model.probabilityA - executable.marketProbabilityA;
+      const edgeB = model.probabilityB - executable.marketProbabilityB;
+      const evA = model.probabilityA * executable.oddsA - 1;
+      const evB = model.probabilityB * executable.oddsB - 1;
 
       const side = evA >= evB ? "A" : "B";
       const edge = side === "A" ? edgeA : edgeB;
       const ev = side === "A" ? evA : evB;
       const odds = side === "A" ? executable.oddsA : executable.oddsB;
-      const probability = side === "A" ? probabilityA : probabilityB;
+      const probability =
+        side === "A" ? model.probabilityA : model.probabilityB;
       const marketProbability =
         side === "A"
           ? executable.marketProbabilityA
@@ -303,22 +267,22 @@ export async function GET(request: NextRequest) {
         tournament: live.tournament ?? oddsFixture.tournamentName,
         surface: live.surface ?? null,
         scheduledTime: live.scheduled_time ?? oddsFixture.startTime,
-        playerA: {
-          name: p1.name,
-          ranking: p1.ranking,
-        },
-        playerB: {
-          name: p2.name,
-          ranking: p2.ranking,
-        },
+        playerA: { name: p1.name, ranking: p1.ranking },
+        playerB: { name: p2.name, ranking: p2.ranking },
         model: {
-          mode: "rank_only_fallback",
-          probabilityA,
-          probabilityB,
-          fairOddsA: 1 / probabilityA,
-          fairOddsB: 1 / probabilityB,
+          mode: model.mode,
+          probabilityA: model.probabilityA,
+          probabilityB: model.probabilityB,
+          fairOddsA: 1 / model.probabilityA,
+          fairOddsB: 1 / model.probabilityB,
+          quality: model.quality,
+          reason: model.reason,
+          features: model.features,
           trainedThrough: "2026-05-25",
-          benchmark,
+          benchmark:
+            model.mode === "full_logit"
+              ? FULL_MODEL_BENCHMARK[modelTour]
+              : RANK_ONLY_BENCHMARK[modelTour],
         },
         market: {
           bookmaker,
@@ -354,32 +318,29 @@ export async function GET(request: NextRequest) {
     }
 
     analyzed.sort((a, b) => {
-      const tierScore = {
-        PREMIUM: 4,
-        VALUE: 3,
-        LEAN: 2,
-        NO_BET: 1,
-      } as const;
+      const tierScore = { PREMIUM: 4, VALUE: 3, LEAN: 2, NO_BET: 1 } as const;
       return (
         tierScore[b.decision.tier] - tierScore[a.decision.tier] ||
         b.decision.ev - a.decision.ev
       );
     });
 
-    const bets = analyzed
-      .filter((row) => row.decision.bet)
-      .slice(0, 5);
+    const bets = analyzed.filter((row) => row.decision.bet).slice(0, 5);
+    const fullModelCount = analyzed.filter(
+      (row) => row.model.mode === "full_logit",
+    ).length;
 
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
       tour: modelTour,
       status: bets.length ? "BET_OPPORTUNITIES_FOUND" : "NO_BET_TODAY",
       modelPolicy: {
-        activeMode: "rank_only_fallback",
-        reason:
-          "The full_logit model is validated, but its dynamic Elo/form/serve-return state is not fresh enough for September 2026 on the current free history feed. Rank-only uses current rankings and is separately walk-forward validated.",
-        fullModelEnabledForLive: false,
+        fullModelEnabledForLive: true,
+        fullModelMatches: fullModelCount,
+        fallbackMatches: analyzed.length - fullModelCount,
         noForcedBets: true,
+        fallbackPolicy:
+          "Use rank_only_logit when player state is missing, stale, or has insufficient serve/return quality.",
       },
       bookmaker,
       sharpReference: "pinnacle",
