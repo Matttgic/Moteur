@@ -6,6 +6,14 @@ const TENNIS_WINNER_OUTCOME_2 = "122";
 
 export type TennisTour = "atp" | "wta";
 
+export const FRENCH_EXECUTION_BOOKMAKERS = [
+  "bet365.fr",
+  "winamax.fr",
+  "unibet.fr",
+  "bwin.fr",
+  "zebet.fr",
+] as const;
+
 type PriceNode = {
   active?: boolean;
   price?: number;
@@ -245,7 +253,7 @@ function isHttpStatus(error: unknown, status: number) {
 export async function getTennisOdds(
   apiKey: string,
   tour: TennisTour,
-  bookmakers = ["winamax.fr", "pinnacle"],
+  bookmakers = [...FRENCH_EXECUTION_BOOKMAKERS, "pinnacle"],
 ) {
   const window = boardWindow();
 
@@ -362,7 +370,11 @@ export async function getTennisOdds(
         // OddsPapi returns FIXTURE_NOT_FOUND when a bookmaker has no board for
         // the requested tournament set. That is an empty result, not a provider
         // outage, so continue with the other bookmaker.
-        if (isHttpStatus(error, 404)) {
+        if (
+          isHttpStatus(error, 400) ||
+          isHttpStatus(error, 403) ||
+          isHttpStatus(error, 404)
+        ) {
           emptyBookmakerQueries += 1;
           continue;
         }
