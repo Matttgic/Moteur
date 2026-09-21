@@ -653,3 +653,180 @@ footer {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+
+.metricGrid small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.metricGuide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 28px;
+}
+
+.metricGuide > div {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(16, 28, 25, 0.7);
+}
+
+.metricGuide strong {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--accent-2);
+}
+
+.metricGuide p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.economicPanel {
+  margin-top: 28px;
+  padding: 22px;
+  border: 1px solid #64542d;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #17180f, rgba(16, 28, 25, 0.92));
+}
+
+.economicHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.economicHeader > div {
+  max-width: 720px;
+}
+
+.economicHeader p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.economicStatus {
+  padding: 9px 11px;
+  border: 1px solid #64542d;
+  border-radius: 12px;
+  color: var(--warn);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.economicStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.economicStats article {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-2);
+}
+
+.economicStats span,
+.economicStats small {
+  display: block;
+  color: var(--muted);
+}
+
+.economicStats span {
+  margin-bottom: 7px;
+  font-size: 11px;
+}
+
+.economicStats strong {
+  display: block;
+  font-size: 20px;
+}
+
+.economicStats small {
+  margin-top: 5px;
+  font-size: 10px;
+}
+
+.positive {
+  color: var(--accent-2);
+}
+
+.negative {
+  color: var(--danger);
+}
+
+.economicRecent {
+  margin-top: 18px;
+}
+
+.economicRecent > strong {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.economicRecent > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.economicRecent span {
+  padding: 7px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.recentWin {
+  border: 1px solid #3e8a6e;
+  color: var(--accent-2);
+  background: rgba(115, 230, 183, 0.08);
+}
+
+.recentLoss {
+  border: 1px solid #714646;
+  color: var(--danger);
+  background: rgba(255, 159, 159, 0.06);
+}
+
+.economicCollecting {
+  margin: 18px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+@media (max-width: 760px) {
+  .metricGuide,
+  .economicStats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .economicHeader {
+    display: block;
+  }
+
+  .economicStatus {
+    margin-top: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .metricGuide,
+  .economicStats {
+    grid-template-columns: 1fr;
+  }
+}

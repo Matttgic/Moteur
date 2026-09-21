@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { recordEconomicBets } from "@/lib/economics";
 import {
   FULL_MODEL_BENCHMARK,
   RANK_ONLY_BENCHMARK,
@@ -484,6 +485,30 @@ export async function GET(request: NextRequest) {
       (row) => row.model.mode === "full_logit",
     ).length;
 
+    let economicTracking: {
+      recorded: boolean;
+      warning: string | null;
+    } = {
+      recorded: false,
+      warning: null,
+    };
+
+    try {
+      const tracked = await recordEconomicBets(modelTour, bets);
+      economicTracking = {
+        recorded: Boolean(tracked?.ok),
+        warning: null,
+      };
+    } catch (trackingError) {
+      economicTracking = {
+        recorded: false,
+        warning:
+          trackingError instanceof Error
+            ? trackingError.message
+            : "economic_tracking_failed",
+      };
+    }
+
     return NextResponse.json({
       generatedAt: new Date().toISOString(),
       tour: modelTour,
@@ -500,6 +525,7 @@ export async function GET(request: NextRequest) {
       bookmaker: requestedBookmaker ?? "AUTO_FR",
       executionBookmakers,
       sharpReference: "pinnacle",
+      economicTracking,
       sourceSummary: {
         liveAccepted: liveResult.accepted_matches,
         liveModelEligible: liveResult.model_eligible_matches,
