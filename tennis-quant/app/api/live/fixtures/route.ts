@@ -5,6 +5,21 @@ export const runtime = "nodejs";
 const BASE_URL = "https://api.livetennisapi.com/api/public/v1";
 const ALLOWED_TOURS = new Set(["atp", "wta"]);
 
+const EXCLUDED_TEAM_COMPETITIONS = [
+  /davis cup/i,
+  /billie jean king cup/i,
+  /bjk cup/i,
+  /laver cup/i,
+  /hopman cup/i,
+];
+
+type ProviderPlayer = {
+  id?: number;
+  name?: string;
+  ranking?: number | null;
+  [key: string]: unknown;
+};
+
 type ProviderMatch = {
   id?: number;
   tournament?: string;
@@ -16,7 +31,10 @@ type ProviderMatch = {
   event_status?: string | null;
   is_doubles?: boolean;
   scheduled_time?: string | null;
-  players?: unknown;
+  players?: {
+    p1?: ProviderPlayer;
+    p2?: ProviderPlayer;
+  } | null;
   [key: string]: unknown;
 };
 
@@ -24,6 +42,47 @@ type ProviderListResponse = {
   data?: ProviderMatch[];
   meta?: unknown;
 };
+
+function isCancelled(match: ProviderMatch) {
+  return (
+    match.status === "cancelled" ||
+    /cancelled|canceled|walkover|withdrawn|abandoned/i.test(
+      match.event_status ?? ""
+    )
+  );
+}
+
+function isExcludedCompetition(match: ProviderMatch) {
+  const tournament = match.tournament ?? "";
+  return EXCLUDED_TEAM_COMPETITIONS.some((pattern) => pattern.test(tournament));
+}
+
+function modelEligibility(match: ProviderMatch) {
+  const reasons: string[] = [];
+  const p1 = match.players?.p1;
+  const p2 = match.players?.p2;
+
+  if (!p1?.name || !p2?.name) {
+    reasons.push("missing_player_identity");
+  }
+
+  if (typeof p1?.ranking !== "number") {
+    reasons.push("missing_player_1_ranking");
+  }
+
+  if (typeof p2?.ranking !== "number") {
+    reasons.push("missing_player_2_ranking");
+  }
+
+  if (!match.surface) {
+    reasons.push("missing_surface");
+  }
+
+  return {
+    model_eligible: reasons.length === 0,
+    model_ineligibility_reasons: reasons,
+  };
+}
 
 export async function GET(request: NextRequest) {
   const tour = request.nextUrl.searchParams.get("tour")?.toLowerCase() ?? "atp";
@@ -89,23 +148,62 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const singles = payload.data.filter(
-    (match) => match && match.is_doubles === false
-  );
   const unknownDrawType = payload.data.filter(
     (match) => match && typeof match.is_doubles !== "boolean"
   ).length;
+
+  const doubles = payload.data.filter(
+    (match) => match && match.is_doubles === true
+  ).length;
+
+  const cancelled = payload.data.filter(
+    (match) => match && match.is_doubles === false && isCancelled(match)
+  );
+
+  const nonTourCompetitions = payload.data.filter(
+    (match) =>
+      match &&
+      match.is_doubles === false &&
+      !isCancelled(match) &&
+      isExcludedCompetition(match)
+  );
+
+  const eligibleFixtures = payload.data
+    .filter(
+      (match) =>
+        match &&
+        match.is_doubles === false &&
+        !isCancelled(match) &&
+        !isExcludedCompetition(match)
+    )
+    .map((match) => ({
+      ...match,
+      ...modelEligibility(match),
+    }));
 
   return NextResponse.json({
     source: "Live Tennis API",
     source_tier_required: "FREE",
     tour: tour.toUpperCase(),
-    scope: "singles_only",
+    scope: "tour_singles_only",
     fetched_matches: payload.data.length,
-    singles_matches: singles.length,
-    excluded_doubles: payload.data.length - singles.length - unknownDrawType,
+    accepted_matches: eligibleFixtures.length,
+    model_eligible_matches: eligibleFixtures.filter(
+      (match) => match.model_eligible
+    ).length,
+    excluded_doubles: doubles,
+    excluded_cancelled: cancelled.length,
+    excluded_non_tour_competition: nonTourCompetitions.length,
     excluded_unknown_draw_type: unknownDrawType,
-    data: singles,
+    filters: {
+      singles_only: true,
+      cancelled_removed: true,
+      excluded_team_competitions: EXCLUDED_TEAM_COMPETITIONS.map(
+        (pattern) => pattern.source
+      ),
+      incomplete_matches_are_never_forced_into_model: true,
+    },
+    data: eligibleFixtures,
     meta: payload.meta ?? null
   });
 }
