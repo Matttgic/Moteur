@@ -16,6 +16,18 @@
     {
       "path": "/api/cron/tennis-picks/wta",
       "schedule": "25 7 * * *"
+    },
+    {
+      "path": "/api/cron/tennis-settle",
+      "schedule": "45 4 * * *"
+    },
+    {
+      "path": "/api/cron/tennis-clv",
+      "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/tennis-health",
+      "schedule": "50 5,17 * * *"
     }
   ]
 }

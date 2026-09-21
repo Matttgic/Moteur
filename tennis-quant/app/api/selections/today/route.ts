@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordEconomicBets } from "@/lib/economics";
+import { recordShadowPicks } from "@/lib/ops";
 import {
   FULL_MODEL_BENCHMARK,
   RANK_ONLY_BENCHMARK,
@@ -491,6 +492,90 @@ export async function GET(request: NextRequest) {
       (row) => row.model.mode === "full_logit",
     ).length;
 
+    const shadowPicks = analyzed.flatMap((row) => {
+      if (
+        row.model.mode !== "full_logit" ||
+        row.decision.guard.blocked ||
+        row.matchId == null
+      ) {
+        return [];
+      }
+
+      const variants: string[] = [];
+
+      if (
+        row.decision.edge >= 0.10 &&
+        row.decision.ev >= 0.07 &&
+        row.decision.odds <= 5
+      ) {
+        variants.push("strict_edge");
+      }
+
+      if (
+        row.decision.edge >= 0.06 &&
+        row.decision.ev >= 0.03 &&
+        row.decision.odds <= 6 &&
+        (row.market.sourceCount >= 2 ||
+          row.decision.sharpProbability != null)
+      ) {
+        variants.push("market_confirmed");
+      }
+
+      if (
+        row.decision.edge >= 0.05 &&
+        row.decision.ev >= 0.02 &&
+        row.decision.odds <= 2.5
+      ) {
+        variants.push("short_price");
+      }
+
+      return variants.map((variant) => ({
+        variant,
+        providerMatchId: String(row.matchId),
+        scheduledAt: row.scheduledTime,
+        tournament: row.tournament,
+        playerAName: row.playerA.name,
+        playerBName: row.playerB.name,
+        selectedSide: row.decision.side,
+        selectedPlayerName: row.decision.player,
+        bookmaker: row.market.bookmaker,
+        odds: row.decision.odds,
+        modelProbability: row.decision.modelProbability,
+        marketProbability: row.decision.marketProbability,
+        edge: row.decision.edge,
+        ev: row.decision.ev,
+        fairOdds: row.decision.fairOdds,
+      }));
+    });
+
+    let shadowTracking: {
+      recorded: boolean;
+      candidates: number;
+      warning: string | null;
+    } = {
+      recorded: false,
+      candidates: shadowPicks.length,
+      warning: null,
+    };
+
+    try {
+      const tracked = await recordShadowPicks(modelTour, shadowPicks);
+      shadowTracking = {
+        recorded: Boolean(tracked?.ok),
+        candidates: shadowPicks.length,
+        warning: null,
+      };
+    } catch (trackingError) {
+      shadowTracking = {
+        recorded: false,
+        candidates: shadowPicks.length,
+        warning:
+          trackingError instanceof Error
+            ? trackingError.message
+            : "shadow_tracking_failed",
+      };
+    }
+
     let economicTracking: {
       recorded: boolean;
       warning: string | null;
@@ -532,6 +617,7 @@ export async function GET(request: NextRequest) {
       executionBookmakers,
       sharpReference: "pinnacle",
       economicTracking,
+      shadowTracking,
       sourceSummary: {
         liveAccepted: liveResult.accepted_matches,
         liveModelEligible: liveResult.model_eligible_matches,
