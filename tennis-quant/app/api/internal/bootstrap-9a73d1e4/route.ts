@@ -49,8 +49,20 @@ export async function GET(request: NextRequest) {
   }
 
   const apiKey = process.env.LIVE_TENNIS_API_KEY;
+  const cronSecret = process.env.CRON_SECRET;
+
   if (!apiKey) {
-    return NextResponse.json({ error: "LIVE_TENNIS_API_KEY_missing" }, { status: 503 });
+    return NextResponse.json(
+      { error: "LIVE_TENNIS_API_KEY_missing" },
+      { status: 503 },
+    );
+  }
+
+  if (!cronSecret) {
+    return NextResponse.json(
+      { error: "CRON_SECRET_missing" },
+      { status: 503 },
+    );
   }
 
   const [from, to] = WINDOWS[part - 1];
@@ -64,7 +76,9 @@ export async function GET(request: NextRequest) {
           "accept": "application/json",
         },
         body: JSON.stringify({
+          action: "sync",
           token,
+          cronSecret,
           liveApiKey: apiKey,
           tour: rawTour,
           from: new Date(`${from}T00:00:00.000Z`).toISOString(),
