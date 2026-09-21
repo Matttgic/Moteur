@@ -25,8 +25,24 @@ export const runtime = "nodejs";
 
 const ALLOWED_TOURS = new Set<LiveTour>(["atp", "wta"]);
 
+function canonicalExternalName(value: string) {
+  const trimmed = value.trim();
+  const commaIndex = trimmed.indexOf(",");
+
+  if (commaIndex > 0) {
+    const familyName = trimmed.slice(0, commaIndex).trim();
+    const givenNames = trimmed.slice(commaIndex + 1).trim();
+
+    if (familyName && givenNames) {
+      return normalizePlayerName(`${givenNames} ${familyName}`);
+    }
+  }
+
+  return normalizePlayerName(trimmed);
+}
+
 function looseName(value: string) {
-  const parts = normalizePlayerName(value).split(" ").filter(Boolean);
+  const parts = canonicalExternalName(value).split(" ").filter(Boolean);
   if (!parts.length) return "";
   const last = parts.at(-1) ?? "";
   const firstInitial = parts[0]?.[0] ?? "";
@@ -34,7 +50,7 @@ function looseName(value: string) {
 }
 
 function pairKey(a: string, b: string, loose = false) {
-  const fn = loose ? looseName : normalizePlayerName;
+  const fn = loose ? looseName : canonicalExternalName;
   return [fn(a), fn(b)].sort().join("|");
 }
 
@@ -90,10 +106,10 @@ function alignQuote(
   if (!p1 || !p2 || !quote) return null;
   if (!oddsFixture.participant1Name || !oddsFixture.participant2Name) return null;
 
-  const live1 = normalizePlayerName(p1);
-  const live2 = normalizePlayerName(p2);
-  const odds1 = normalizePlayerName(oddsFixture.participant1Name);
-  const odds2 = normalizePlayerName(oddsFixture.participant2Name);
+  const live1 = canonicalExternalName(p1);
+  const live2 = canonicalExternalName(p2);
+  const odds1 = canonicalExternalName(oddsFixture.participant1Name);
+  const odds2 = canonicalExternalName(oddsFixture.participant2Name);
 
   const direct =
     (live1 === odds1 && live2 === odds2) ||
