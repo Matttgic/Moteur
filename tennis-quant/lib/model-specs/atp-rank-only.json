@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "tour": "ATP",
+  "model_name": "rank_only_logit",
+  "trained_through": "2026-05-25",
+  "feature_columns": ["log_rank_diff"],
+  "scaler": {"mean": [0.006564100531691881], "scale": [1.4146764150003879]},
+  "base_logit": {"coefficients": [-0.9134455097765048], "intercept": -0.0019101450861327234},
+  "platt": {"coefficient": 0.9579796378059389, "intercept": 0.11864966687402638}
+}
