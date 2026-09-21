@@ -27,11 +27,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: tennis-quant/package-lock.json
 
       - name: Install
-        run: npm install --package-lock-only && npm ci
+        run: npm install
 
       - name: Typecheck
         run: npm run typecheck
