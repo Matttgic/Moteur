@@ -339,6 +339,15 @@ def main() -> None:
         tour=args.tour,
     )
 
+    fallback_dir = output_dir / "rank_only_fallback"
+    fallback_final = fit_final(
+        features,
+        fallback_dir,
+        model_name="rank_only_logit",
+        columns=MODEL_SPECS["rank_only_logit"],
+        tour=args.tour,
+    )
+
     report = {
         "tour": args.tour,
         "source": "Aneeshers/tennis-sackmann-archive",
@@ -351,6 +360,7 @@ def main() -> None:
         "models": model_reports,
         "oos_predictions_file": "oos_predictions.csv",
         "final_model": final,
+        "fallback_model": fallback_final,
         "betting_metrics": {
             "roi": None,
             "clv": None,
