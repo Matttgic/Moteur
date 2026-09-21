@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const TOKEN_SHA256 =
-  "278f1bd5ea9787a0c217d63cbf5dd69c53d801fcbbbdcc149393b196e6f17658";
+  "f82766732773229469533ca34c6f2ff5b1726fa18363f32c98b2918c1173cca0";
 const EXPIRES_AT = Date.parse("2026-09-22T00:00:00.000Z");
 
 const WINDOWS = [
