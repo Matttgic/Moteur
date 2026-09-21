@@ -3,6 +3,7 @@ name: Tennis Quant CI
 on:
   push:
     branches:
+      - main
       - tennis-quant-v1
     paths:
       - "tennis-quant/**"
