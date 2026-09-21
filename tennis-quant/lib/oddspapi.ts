@@ -3,17 +3,6 @@ const TENNIS_SPORT_ID = 12;
 
 export type TennisTour = "atp" | "wta";
 
-type Tournament = {
-  tournamentId: number;
-  tournamentSlug?: string;
-  tournamentName?: string;
-  categorySlug?: string;
-  categoryName?: string;
-  futureFixtures?: number;
-  upcomingFixtures?: number;
-  liveFixtures?: number;
-};
-
 type MarketCatalogItem = {
   marketId: number;
   marketLength?: number;
@@ -59,7 +48,9 @@ type OddsFixture = {
   participant1Name?: string;
   participant2Name?: string;
   tournamentId?: number;
+  tournamentSlug?: string;
   tournamentName?: string;
+  categorySlug?: string;
   categoryName?: string;
   sportId?: number;
   statusId?: number;
@@ -69,38 +60,43 @@ type OddsFixture = {
   bookmakerOdds?: Record<string, BookmakerNode>;
 };
 
-const EXCLUDED_TENNIS = /challenger|itf|utr|junior|davis cup|billie jean king|bjk cup|laver cup|hopman cup|united cup|exhibition/i;
-const GRAND_SLAM = /australian open|roland garros|french open|wimbledon|us open|grand slam/i;
+const EXCLUDED_TENNIS =
+  /challenger|itf|utr|junior|davis cup|billie jean king|bjk cup|laver cup|hopman cup|united cup|exhibition/i;
+const GRAND_SLAM =
+  /australian open|roland garros|french open|wimbledon|us open|grand slam/i;
 
-function tournamentText(t: Tournament) {
+function fixtureText(fixture: OddsFixture) {
   return [
-    t.tournamentName,
-    t.tournamentSlug,
-    t.categoryName,
-    t.categorySlug,
+    fixture.tournamentName,
+    fixture.tournamentSlug,
+    fixture.categoryName,
+    fixture.categorySlug,
   ]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
 }
 
-export function isTargetTourTournament(t: Tournament, tour: TennisTour) {
-  const text = tournamentText(t);
+export function isTargetTourFixture(
+  fixture: OddsFixture,
+  tour: TennisTour,
+) {
+  const text = fixtureText(fixture);
   if (EXCLUDED_TENNIS.test(text)) return false;
-
-  const active =
-    (t.futureFixtures ?? 0) > 0 ||
-    (t.upcomingFixtures ?? 0) > 0 ||
-    (t.liveFixtures ?? 0) > 0;
-  if (!active) return false;
 
   if (tour === "atp") {
     if (/\bwta\b|women singles|women's singles/.test(text)) return false;
-    return /\batp\b|men singles|men's singles/.test(text) || GRAND_SLAM.test(text);
+    return (
+      /\batp\b|men singles|men's singles/.test(text) ||
+      GRAND_SLAM.test(text)
+    );
   }
 
   if (/\batp\b|men singles|men's singles/.test(text)) return false;
-  return /\bwta\b|women singles|women's singles/.test(text) || GRAND_SLAM.test(text);
+  return (
+    /\bwta\b|women singles|women's singles/.test(text) ||
+    GRAND_SLAM.test(text)
+  );
 }
 
 async function oddsApi<T>(
@@ -122,7 +118,13 @@ async function oddsApi<T>(
 
   const payload = await response.json().catch(() => null);
   if (!response.ok) {
-    const error = new Error(`OddsPapi ${path} failed with HTTP ${response.status}`);
+    const detail =
+      payload && typeof payload === "object"
+        ? JSON.stringify(payload).slice(0, 800)
+        : String(payload ?? "");
+    const error = new Error(
+      `OddsPapi ${path} failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+    );
     Object.assign(error, { status: response.status, payload });
     throw error;
   }
@@ -152,8 +154,11 @@ function moneylineCandidates(catalog: MarketCatalogItem[]) {
       const type = (market.marketType ?? "").toLowerCase();
       const period = (market.period ?? "").toLowerCase();
 
-      const winnerLike = /winner|moneyline|match winner/.test(name) || /moneyline|winner/.test(type);
-      const matchPeriod = !period || /fulltime|full time|match|game/.test(period);
+      const winnerLike =
+        /winner|moneyline|match winner/.test(name) ||
+        /moneyline|winner/.test(type);
+      const matchPeriod =
+        !period || /fulltime|full time|match|game/.test(period);
       return winnerLike && matchPeriod;
     })
     .sort((a, b) => {
@@ -183,11 +188,20 @@ function orderedOutcomeIds(market: MarketCatalogItem) {
 }
 
 function activePrice(outcome: OddsOutcome | undefined) {
-  const price = outcome?.players?.["0"];
-  if (!price || price.active === false) return null;
-  if (typeof price.price !== "number" || !Number.isFinite(price.price) || price.price <= 1) {
-    return null;
-  }
+  const prices = outcome?.players;
+  if (!prices) return null;
+
+  const price = Object.values(prices).find(
+    (candidate) =>
+      candidate &&
+      candidate.active !== false &&
+      typeof candidate.price === "number" &&
+      Number.isFinite(candidate.price) &&
+      candidate.price > 1,
+  );
+
+  if (!price || typeof price.price !== "number") return null;
+
   return {
     price: price.price,
     changedAt: price.changedAt ?? null,
@@ -236,17 +250,54 @@ function extractMoneyline(
   return null;
 }
 
+function boardWindow() {
+  const now = new Date();
+  const from = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0,
+      0,
+      0,
+    ),
+  );
+  const to = new Date(from.getTime() + 47 * 60 * 60 * 1000 + 59 * 60 * 1000);
+  return {
+    from: from.toISOString(),
+    to: to.toISOString(),
+  };
+}
+
+function chunks<T>(values: T[], size: number) {
+  const result: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    result.push(values.slice(index, index + size));
+  }
+  return result;
+}
+
 export async function getTennisOdds(
   apiKey: string,
   tour: TennisTour,
   bookmakers = ["winamax.fr", "pinnacle"],
 ) {
-  const [tournaments, catalog] = await Promise.all([
-    oddsApi<Tournament[]>(
+  const window = boardWindow();
+
+  const [fixturePayload, catalog] = await Promise.all([
+    oddsApi<unknown>(
       apiKey,
-      "tournaments",
-      { sportId: String(TENNIS_SPORT_ID), language: "en" },
-      86_400,
+      "fixtures",
+      {
+        sportId: String(TENNIS_SPORT_ID),
+        from: window.from,
+        to: window.to,
+        statusId: "0",
+        hasOdds: "true",
+        bookmakers: bookmakers.join(","),
+        language: "en",
+      },
+      43_200,
     ),
     oddsApi<MarketCatalogItem[]>(
       apiKey,
@@ -256,48 +307,85 @@ export async function getTennisOdds(
     ),
   ]);
 
-  const targetTournaments = tournaments
-    .filter((t) => isTargetTourTournament(t, tour))
-    .slice(0, 50);
+  const boardFixtures = normalizeFixturePayload(fixturePayload)
+    .filter(
+      (fixture) =>
+        fixture.sportId === TENNIS_SPORT_ID &&
+        fixture.statusId === 0 &&
+        fixture.hasOdds !== false,
+    )
+    .filter((fixture) => isTargetTourFixture(fixture, tour));
 
-  if (!targetTournaments.length) {
+  if (!boardFixtures.length) {
     return {
       tour: tour.toUpperCase(),
       tournamentCount: 0,
       tournaments: [],
+      bookmakers,
+      moneylineMarketCandidates: [],
+      requestWindow: window,
       fixtures: [],
     };
   }
 
-  const tournamentIds = targetTournaments.map((t) => t.tournamentId).join(",");
-  const payload = await oddsApi<unknown>(
-    apiKey,
-    "odds-by-tournaments",
-    {
-      tournamentIds,
-      bookmakers: bookmakers.join(","),
-      language: "en",
-      verbosity: "3",
-      oddsFormat: "decimal",
-    },
-    43_200,
+  const fixtureIds = new Set(
+    boardFixtures
+      .map((fixture) => fixture.fixtureId)
+      .filter((id): id is string => typeof id === "string"),
   );
 
+  const tournamentMap = new Map<
+    number,
+    { tournamentId: number; tournamentName: string | null; categoryName: string | null }
+  >();
+
+  for (const fixture of boardFixtures) {
+    if (typeof fixture.tournamentId !== "number") continue;
+    if (!tournamentMap.has(fixture.tournamentId)) {
+      tournamentMap.set(fixture.tournamentId, {
+        tournamentId: fixture.tournamentId,
+        tournamentName: fixture.tournamentName ?? null,
+        categoryName: fixture.categoryName ?? null,
+      });
+    }
+  }
+
+  const tournamentIds = Array.from(tournamentMap.keys());
+  const payloads: unknown[] = [];
+
+  // Small batches avoid oversized tournament queries while still keeping the
+  // free-tier request count low. On ordinary ATP/WTA days this is one call.
+  for (const batch of chunks(tournamentIds, 10)) {
+    const payload = await oddsApi<unknown>(
+      apiKey,
+      "odds-by-tournaments",
+      {
+        tournamentIds: batch.join(","),
+        bookmakers: bookmakers.join(","),
+        language: "en",
+        verbosity: "3",
+      },
+      43_200,
+    );
+    payloads.push(payload);
+  }
+
   const candidates = moneylineCandidates(catalog);
-  const fixtures = normalizeFixturePayload(payload)
-    .filter((f) => f.sportId === TENNIS_SPORT_ID && f.statusId !== 3)
-    .filter((f) => {
-      const fakeTournament: Tournament = {
-        tournamentId: f.tournamentId ?? 0,
-        tournamentName: f.tournamentName,
-        categoryName: f.categoryName,
-        futureFixtures: 1,
-      };
-      return isTargetTourTournament(fakeTournament, tour);
-    })
+  const fixtures = payloads
+    .flatMap((payload) => normalizeFixturePayload(payload))
+    .filter(
+      (fixture) =>
+        typeof fixture.fixtureId === "string" &&
+        fixtureIds.has(fixture.fixtureId) &&
+        fixture.sportId === TENNIS_SPORT_ID &&
+        fixture.statusId !== 3,
+    )
     .map((fixture) => {
       const prices = Object.fromEntries(
-        bookmakers.map((book) => [book, extractMoneyline(fixture, book, candidates)]),
+        bookmakers.map((book) => [
+          book,
+          extractMoneyline(fixture, book, candidates),
+        ]),
       );
 
       return {
@@ -318,17 +406,14 @@ export async function getTennisOdds(
 
   return {
     tour: tour.toUpperCase(),
-    tournamentCount: targetTournaments.length,
-    tournaments: targetTournaments.map((t) => ({
-      tournamentId: t.tournamentId,
-      tournamentName: t.tournamentName ?? null,
-      categoryName: t.categoryName ?? null,
-    })),
+    tournamentCount: tournamentMap.size,
+    tournaments: Array.from(tournamentMap.values()),
     bookmakers,
-    moneylineMarketCandidates: candidates.slice(0, 10).map((m) => ({
-      marketId: m.marketId,
-      marketName: m.marketName ?? null,
+    moneylineMarketCandidates: candidates.slice(0, 10).map((market) => ({
+      marketId: market.marketId,
+      marketName: market.marketName ?? null,
     })),
+    requestWindow: window,
     fixtures,
   };
 }
