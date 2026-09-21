@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b10">
+<title>EdgeScope</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#111722;--line:#273043;--muted:#93a0b5;--text:#f7f9fc;--green:#77e28b;--red:#ff8686;--accent:#ffffff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b0e14,#07090d 45%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;min-height:100vh}.wrap{max-width:1080px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-size:26px;font-weight:850;letter-spacing:-.4px}.muted{color:var(--muted);font-size:13px}.badge{border:1px solid var(--line);padding:6px 9px;border-radius:999px;color:var(--muted);font-size:12px}.nav{display:flex;gap:8px;overflow:auto;padding:14px 0}.nav button,.btn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:11px;padding:10px 13px;font-weight:700}.btn.primary{background:var(--accent);color:#080a0f}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.card{background:rgba(17,23,34,.96);border:1px solid var(--line);border-radius:16px;padding:14px}.metric b{display:block;font-size:23px;margin-top:6px}.tools{display:grid;grid-template-columns:1fr auto;gap:10px;margin:8px 0 14px}.list{display:grid;gap:9px}.row{display:grid;grid-template-columns:1.4fr 1fr .7fr .7fr .7fr;gap:10px;align-items:center}.good{color:var(--green)}.bad{color:var(--red)}select,input{width:100%;background:#0c1119;color:var(--text);border:1px solid var(--line);border-radius:11px;padding:11px}.hide{display:none}.login{max-width:430px;margin:13vh auto}.login h1{margin:0 0 6px}.login .card{padding:20px}.login input{margin:14px 0}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 7px;color:var(--muted);font-size:11px}.status{margin-bottom:10px}.small{font-size:12px}.section-title{margin:12px 0 8px}
+@media(max-width:720px){.wrap{padding:12px}.grid{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr 1fr}.row>:first-child{grid-column:1/-1}.tools{grid-template-columns:1fr}.brand{font-size:23px}}
+</style>
+</head>
+<body>
+<div id="login" class="login wrap">
+  <div class="card">
+    <h1>EdgeScope</h1>
+    <div class="muted">Accès privé au scanner</div>
+    <input id="pin" type="password" inputmode="text" autocomplete="off" placeholder="Code PIN">
+    <button class="btn primary" onclick="login()">Entrer</button>
+    <div id="loginMsg" class="muted" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<main id="app" class="wrap hide">
+  <div class="top"><div><div class="brand">EdgeScope</div><div class="muted">Pinnacle fair price → bookmakers FR</div></div><span class="badge">LIVE MVP</span></div>
+  <div class="nav"><button onclick="show('scan')">Scanner</button><button onclick="loadHistory()">Historique</button><button onclick="loadPerf()">Performance</button><button onclick="loadSettings()">Réglages</button><button onclick="logout()">Quitter</button></div>
+
+  <section id="scan">
+    <div class="tools">
+      <select id="sport"><option value="soccer">Football</option><option value="basketball">Basketball</option><option value="tennis">Tennis</option></select>
+      <button class="btn primary" onclick="doScan()">Scanner maintenant</button>
+    </div>
+    <div class="grid">
+      <div class="card metric"><span class="muted">Signaux</span><b id="n">—</b></div>
+      <div class="card metric"><span class="muted">Meilleur edge</span><b id="best">—</b></div>
+      <div class="card metric"><span class="muted">Seuil</span><b>2,5%</b></div>
+      <div class="card metric"><span class="muted">Source</span><b>OddsPapi</b></div>
+    </div>
+    <div id="status" class="card muted status">Ajoute d’abord ta clé OddsPapi dans Réglages.</div>
+    <div id="rows" class="list"></div>
+  </section>
+
+  <section id="history" class="hide"><h2 class="section-title">Historique</h2><div id="hrows" class="list"></div></section>
+  <section id="performance" class="hide"><h2 class="section-title">Performance</h2><div id="perfgrid" class="grid"></div><div class="card muted">Le ROI n’est calculé qu’à partir des paris réellement enregistrés.</div></section>
+  <section id="settings" class="hide"><h2 class="section-title">Réglages</h2><div class="card"><div class="muted">La clé est envoyée à ton backend privé. Elle n’est jamais affichée ensuite.</div><br><label>Clé OddsPapi</label><input id="opkey" type="password" placeholder="Colle ta clé API"><br><br><button class="btn primary" onclick="saveSettings()">Enregistrer</button><div id="setstatus" class="muted" style="margin-top:10px"></div></div></section>
+
+  <p class="muted small">18+ · Aucun gain garanti. Le score de confiance mesure la qualité technique du signal, pas sa probabilité de gagner.</p>
+</main>
+<script>
+const API='https://tapotyftgyacbnjmeovn.supabase.co/functions/v1/edgescope-api';
+let PIN=localStorage.getItem('edgescope_pin')||'';
+const pc=n=>(Number(n)*100).toFixed(2)+'%';
+async function call(action,options={}){const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');const res=await fetch(url,{method:options.method||'GET',headers:{'x-edgescope-pin':PIN,'content-type':'application/json'},body:options.body?JSON.stringify(options.body):undefined});if(res.status===401){logout();throw new Error('Code PIN invalide');}return res.json()}
+async function login(){PIN=document.getElementById('pin').value.trim();try{await call('settings');localStorage.setItem('edgescope_pin',PIN);document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings();show('scan')}catch(e){document.getElementById('loginMsg').textContent='Code PIN incorrect.'}}
+function logout(){localStorage.removeItem('edgescope_pin');PIN='';document.getElementById('app').classList.add('hide');document.getElementById('login').classList.remove('hide')}
+function show(id){for(const x of ['scan','history','performance','settings'])document.getElementById(x).classList.toggle('hide',x!==id)}
+async function doScan(){show('scan');status.textContent='Analyse des cotes…';rows.innerHTML='';try{const sport=document.getElementById('sport').value;const x=await call('scan',{extra:'&sport='+encodeURIComponent(sport)});if(x.status==='missing_api_key'){status.textContent='Configure la clé OddsPapi dans Réglages.';return}if(x.status!=='ok'){status.textContent='Erreur: '+(x.error||x.status);return}n.textContent=x.rows.length;best.textContent=x.rows[0]?pc(x.rows[0].edge):'—';status.textContent=x.rows.length?'Opportunités répondant aux filtres.':'Aucune value ≥ 2,5% suffisamment fraîche.';rows.innerHTML=x.rows.map(o=>'<article class="card row"><div><b>'+o.event+'</b><div class="muted">'+o.market+'</div></div><div><span class="pill">'+o.bookmakerTitle+'</span><div><b>'+o.selection+'</b> @ '+Number(o.offeredOdds).toFixed(2)+'</div></div><div><span class="muted">Fair</span><br><b>'+Number(o.fairOdds).toFixed(2)+'</b></div><div><span class="muted">Edge</span><br><b class="good">'+pc(o.edge)+'</b></div><div><span class="muted">Score</span><br><b>'+o.confidence+'/100</b></div></article>').join('')}catch(e){status.textContent='Erreur réseau ou authentification.'}}
+async function loadHistory(){show('history');const x=await call('history');hrows.innerHTML=(x.rows||[]).map(r=>'<div class="card"><b>'+r.event_name+'</b><div class="muted">'+r.selection+' · '+r.bookmaker_key+' · '+pc(r.edge)+'</div></div>').join('')||'<div class="card muted">Aucun historique.</div>'}
+async function loadPerf(){show('performance');const x=await call('performance'),p=x.data||{};perfgrid.innerHTML=[['Signaux',p.signals||0],['Edge moyen',pc(p.avgEdge||0)],['P&L',(p.pnl||0).toFixed(2)+' €'],['ROI',p.roi==null?'—':pc(p.roi)]].map(a=>'<div class="card metric"><span class="muted">'+a[0]+'</span><b>'+a[1]+'</b></div>').join('')}
+async function loadSettings(){show('settings');const x=await call('settings');setstatus.textContent='OddsPapi : '+(x.oddspapi?'configuré':'à configurer')}
+async function saveSettings(){const key=opkey.value.trim();if(!key){setstatus.textContent='Colle une clé OddsPapi.';return}const x=await call('settings',{method:'POST',body:{oddspapiKey:key}});opkey.value='';setstatus.textContent='Clé enregistrée. '+(x.saved||[]).join(', ')}
+if(PIN){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings().catch(()=>logout())}
+</script>
+</body>
+</html>
