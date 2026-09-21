@@ -10,6 +10,7 @@ import {
   type LiveTour,
 } from "@/lib/live-tennis";
 import {
+  FRENCH_EXECUTION_BOOKMAKERS,
   getTennisOdds,
   type TennisTour,
 } from "@/lib/oddspapi";
@@ -161,8 +162,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const bookmaker =
-    request.nextUrl.searchParams.get("bookmaker")?.trim() || "winamax.fr";
+  const requestedBookmaker =
+    request.nextUrl.searchParams.get("bookmaker")?.trim() || null;
+  const executionBookmakers = requestedBookmaker
+    ? [requestedBookmaker]
+    : [...FRENCH_EXECUTION_BOOKMAKERS];
 
   try {
     const [liveResult, oddsResult] = await Promise.all([
@@ -170,7 +174,7 @@ export async function GET(request: NextRequest) {
       getTennisOdds(
         oddsKey,
         rawTour as TennisTour,
-        Array.from(new Set([bookmaker, "pinnacle"])),
+        Array.from(new Set([...executionBookmakers, "pinnacle"])),
       ),
     ]);
 
@@ -224,19 +228,6 @@ export async function GET(request: NextRequest) {
         continue;
       }
 
-      const executable = alignQuote(live, oddsFixture, bookmaker);
-      if (!executable) {
-        rejected.push({
-          matchId: live.id ?? null,
-          playerA: p1.name,
-          playerB: p2.name,
-          reason: "bookmaker_moneyline_unavailable",
-          bookmaker,
-        });
-        continue;
-      }
-
-      const sharp = alignQuote(live, oddsFixture, "pinnacle");
       const stateA = states.get(normalizePlayerName(p1.name)) ?? null;
       const stateB = states.get(normalizePlayerName(p2.name)) ?? null;
       const model = probabilityForLiveMatch(
@@ -247,14 +238,60 @@ export async function GET(request: NextRequest) {
         historySync.fresh,
       );
 
+      const executionQuotes: Array<{
+        bookmaker: string;
+        quote: NonNullable<ReturnType<typeof alignQuote>>;
+      }> = [];
+
+      for (const candidateBookmaker of executionBookmakers) {
+        const quote = alignQuote(live, oddsFixture, candidateBookmaker);
+        if (quote) {
+          executionQuotes.push({
+            bookmaker: candidateBookmaker,
+            quote,
+          });
+        }
+      }
+
+      if (!executionQuotes.length) {
+        rejected.push({
+          matchId: live.id ?? null,
+          playerA: p1.name,
+          playerB: p2.name,
+          reason: "french_bookmaker_moneyline_unavailable",
+          bookmakersTried: executionBookmakers,
+        });
+        continue;
+      }
+
+      const executionCandidates = executionQuotes.flatMap(
+        ({ bookmaker, quote }) => [
+          {
+            bookmaker,
+            quote,
+            side: "A" as const,
+            ev: model.probabilityA * quote.oddsA - 1,
+          },
+          {
+            bookmaker,
+            quote,
+            side: "B" as const,
+            ev: model.probabilityB * quote.oddsB - 1,
+          },
+        ],
+      );
+
+      executionCandidates.sort((a, b) => b.ev - a.ev);
+      const bestExecution = executionCandidates[0];
+      const bookmaker = bestExecution.bookmaker;
+      const executable = bestExecution.quote;
+      const side = bestExecution.side;
+
+      const sharp = alignQuote(live, oddsFixture, "pinnacle");
       const edgeA = model.probabilityA - executable.marketProbabilityA;
       const edgeB = model.probabilityB - executable.marketProbabilityB;
-      const evA = model.probabilityA * executable.oddsA - 1;
-      const evB = model.probabilityB * executable.oddsB - 1;
-
-      const side = evA >= evB ? "A" : "B";
       const edge = side === "A" ? edgeA : edgeB;
-      const ev = side === "A" ? evA : evB;
+      const ev = bestExecution.ev;
       const odds = side === "A" ? executable.oddsA : executable.oddsB;
       const probability =
         side === "A" ? model.probabilityA : model.probabilityB;
@@ -353,7 +390,8 @@ export async function GET(request: NextRequest) {
         fallbackPolicy:
           "Use rank_only_logit when player state is missing, stale, or has insufficient serve/return quality.",
       },
-      bookmaker,
+      bookmaker: requestedBookmaker ?? "AUTO_FR",
+      executionBookmakers,
       sharpReference: "pinnacle",
       sourceSummary: {
         liveAccepted: liveResult.accepted_matches,
