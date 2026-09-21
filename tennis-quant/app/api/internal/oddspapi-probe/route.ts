@@ -5,19 +5,17 @@ export const maxDuration = 60;
 
 const BASE = "https://api.oddspapi.io/v4";
 const SPORT_ID = 12;
+const WATCH = [
+  "winamax.fr","winamax.es","betclic","betclic.fr","unibet","unibet.fr",
+  "pmu","pmu.fr","parionssport","parionssport.fr","pinnacle",
+  "bet365.fr","bet365","betfair-ex","sx.bet","sharpxch"
+];
 
 function window48h() {
   const now = new Date();
-  const from = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-    ),
-  );
+  const from = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0
+  ));
   const to = new Date(from.getTime() + 47 * 60 * 60 * 1000 + 59 * 60 * 1000);
   return { from: from.toISOString(), to: to.toISOString() };
 }
@@ -25,53 +23,27 @@ function window48h() {
 async function call(path: string, params: Record<string, string>) {
   const apiKey = process.env.ODDS_PAPI_API_KEY;
   if (!apiKey) throw new Error("ODDS_PAPI_API_KEY missing");
-
   const url = new URL(`${BASE}/${path}`);
   url.searchParams.set("apiKey", apiKey);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
-  }
-
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
   const response = await fetch(url, {
     headers: { Accept: "application/json" },
     cache: "no-store",
   });
   const body = await response.json().catch(() => null);
-
-  return {
-    status: response.status,
-    ok: response.ok,
-    body,
-  };
+  return { status: response.status, body };
 }
 
-function compactOdds(body: any) {
-  if (!body || typeof body !== "object") return body;
-
-  const bookmakerOdds = body.bookmakerOdds ?? body.bookmakers ?? {};
-  const books: Record<string, unknown> = {};
-
-  for (const [slug, book] of Object.entries(bookmakerOdds as Record<string, any>)) {
-    const marketKeys = Object.keys(book?.markets ?? {});
-    const winner = book?.markets?.["121"] ?? null;
-    books[slug] = {
-      suspended: book?.suspended ?? null,
-      bookmakerIsActive: book?.bookmakerIsActive ?? null,
-      marketKeys: marketKeys.slice(0, 30),
-      winner,
-    };
-  }
-
+function winner(book: any) {
+  const market = book?.markets?.["121"];
+  const a = market?.outcomes?.["121"]?.players?.["0"]?.price;
+  const b = market?.outcomes?.["122"]?.players?.["0"]?.price;
   return {
-    fixtureId: body.fixtureId ?? null,
-    participant1Name: body.participant1Name ?? null,
-    participant2Name: body.participant2Name ?? null,
-    tournamentId: body.tournamentId ?? null,
-    tournamentName: body.tournamentName ?? null,
-    statusId: body.statusId ?? null,
-    hasOdds: body.hasOdds ?? null,
-    bookmakerKeys: Object.keys(bookmakerOdds),
-    books,
+    active: book?.bookmakerIsActive ?? null,
+    suspended: book?.suspended ?? null,
+    winnerActive: market?.marketActive ?? null,
+    odds1: typeof a === "number" ? a : null,
+    odds2: typeof b === "number" ? b : null,
   };
 }
 
@@ -80,82 +52,56 @@ export async function GET(request: NextRequest) {
   const { from, to } = window48h();
 
   const fixtures = await call("fixtures", {
-    sportId: String(SPORT_ID),
-    from,
-    to,
-    statusId: "0",
-    language: "en",
+    sportId: String(SPORT_ID), from, to, statusId: "0", language: "en",
   });
 
   const rows = Array.isArray(fixtures.body) ? fixtures.body : [];
   const target = rows.filter((fixture: any) => {
-    const text = [
-      fixture.tournamentName,
-      fixture.tournamentSlug,
-      fixture.categoryName,
-      fixture.categorySlug,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+    const info = [
+      fixture.tournamentName, fixture.tournamentSlug,
+      fixture.categoryName, fixture.categorySlug,
+    ].filter(Boolean).join(" ").toLowerCase();
 
-    if (/challenger|itf|utr|junior|doubles?|davis cup|billie jean king|bjk cup|laver cup|hopman cup|united cup|exhibition/i.test(text)) {
-      return false;
-    }
-
+    if (/challenger|itf|utr|junior|doubles?|davis cup|billie jean king|bjk cup|laver cup|hopman cup|united cup|exhibition/i.test(info)) return false;
     if (tour === "wta") {
-      if (/\batp\b|men singles|men's singles/.test(text)) return false;
-      return /\bwta\b|women singles|women's singles/.test(text);
+      if (/\batp\b|men singles|men's singles/.test(info)) return false;
+      return /\bwta\b|women singles|women's singles/.test(info);
     }
-
-    if (/\bwta\b|women singles|women's singles/.test(text)) return false;
-    return /\batp\b|men singles|men's singles/.test(text);
+    if (/\bwta\b|women singles|women's singles/.test(info)) return false;
+    return /\batp\b|men singles|men's singles/.test(info);
   });
 
   const samples = [];
-  for (const fixture of target.slice(0, 2)) {
-    if (samples.length > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 1100));
-    }
-
+  for (const fixture of target.slice(0, 3)) {
+    if (samples.length) await new Promise((resolve) => setTimeout(resolve, 1100));
     const odds = await call("odds", {
       fixtureId: String(fixture.fixtureId),
-      language: "en",
-      verbosity: "3",
-      oddsFormat: "decimal",
+      language: "en", verbosity: "3", oddsFormat: "decimal",
     });
+    const bookmakerOdds = odds.body?.bookmakerOdds ?? odds.body?.bookmakers ?? {};
+    const keys = Object.keys(bookmakerOdds);
+    const watched: Record<string, unknown> = {};
+    for (const slug of WATCH) watched[slug] = bookmakerOdds[slug] ? winner(bookmakerOdds[slug]) : null;
+
+    const availableWinner = keys
+      .map((slug) => ({ slug, ...winner(bookmakerOdds[slug]) }))
+      .filter((row) => row.odds1 != null && row.odds2 != null)
+      .slice(0, 50);
 
     samples.push({
       fixture: {
         fixtureId: fixture.fixtureId,
         participant1Name: fixture.participant1Name,
         participant2Name: fixture.participant2Name,
-        tournamentId: fixture.tournamentId,
         tournamentName: fixture.tournamentName,
-        categoryName: fixture.categoryName,
-        statusId: fixture.statusId,
-        hasOdds: fixture.hasOdds,
         startTime: fixture.startTime,
       },
       oddsStatus: odds.status,
-      odds: compactOdds(odds.body),
+      bookmakerCount: keys.length,
+      watched,
+      availableWinner,
     });
   }
 
-  return NextResponse.json({
-    tour,
-    fixtureRequestStatus: fixtures.status,
-    discovered: target.length,
-    discoveredSample: target.slice(0, 8).map((fixture: any) => ({
-      fixtureId: fixture.fixtureId,
-      participant1Name: fixture.participant1Name,
-      participant2Name: fixture.participant2Name,
-      tournamentId: fixture.tournamentId,
-      tournamentName: fixture.tournamentName,
-      categoryName: fixture.categoryName,
-      hasOdds: fixture.hasOdds,
-      startTime: fixture.startTime,
-    })),
-    samples,
-  });
+  return NextResponse.json({ tour, discovered: target.length, samples });
 }
