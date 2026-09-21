@@ -13,7 +13,7 @@ on:
       - ".github/workflows/tennis-quant-ci.yml"
 
 jobs:
-  build:
+  web:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,3 +36,32 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  ml:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tennis-quant/ml
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ML dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: pytest -q
+
+      - name: ATP smoke backtest
+        run: |
+          python -m tennis_quant_ml.train             --tour ATP             --start-year 2023             --end-year 2025             --test-years 2025             --output /tmp/tennis-quant-atp
+
+      - name: WTA smoke backtest
+        run: |
+          python -m tennis_quant_ml.train             --tour WTA             --start-year 2023             --end-year 2025             --test-years 2025             --output /tmp/tennis-quant-wta
