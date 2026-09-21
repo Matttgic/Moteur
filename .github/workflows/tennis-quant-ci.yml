@@ -85,6 +85,7 @@ jobs:
           name: tennis-quant-atp-inference
           path: |
             /tmp/tennis-quant-atp/inference_spec.json
+            /tmp/tennis-quant-atp/rank_only_fallback/inference_spec.json
             /tmp/tennis-quant-atp/report.json
           retention-days: 7
 
@@ -94,5 +95,6 @@ jobs:
           name: tennis-quant-wta-inference
           path: |
             /tmp/tennis-quant-wta/inference_spec.json
+            /tmp/tennis-quant-wta/rank_only_fallback/inference_spec.json
             /tmp/tennis-quant-wta/report.json
           retention-days: 7
