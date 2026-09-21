@@ -1,7 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { syncCompletedHistory } from "@/lib/history-ingest";
-import type { LiveTour } from "@/lib/live-tennis";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -57,19 +55,50 @@ export async function GET(request: NextRequest) {
 
   const [from, to] = WINDOWS[part - 1];
   try {
-    const result = await syncCompletedHistory({
-      apiKey,
-      tour: rawTour as LiveTour,
-      from: new Date(`${from}T00:00:00.000Z`).toISOString(),
-      to: new Date(`${to}T23:59:59.999Z`).toISOString(),
-    });
+    const edgeResponse = await fetch(
+      "https://uciolnhvddbindxajzti.supabase.co/functions/v1/tennis-basic-backfill",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "accept": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          liveApiKey: apiKey,
+          tour: rawTour,
+          from: new Date(`${from}T00:00:00.000Z`).toISOString(),
+          to: new Date(`${to}T23:59:59.999Z`).toISOString(),
+        }),
+      },
+    );
+
+    const payload = await edgeResponse.json().catch(() => null);
+
+    if (!edgeResponse.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          tour: rawTour.toUpperCase(),
+          part,
+          from,
+          to,
+          error:
+            payload && typeof payload === "object"
+              ? payload
+              : `edge_http_${edgeResponse.status}`,
+        },
+        { status: 500 },
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       tour: rawTour.toUpperCase(),
       part,
       from,
       to,
-      result,
+      result: payload?.result ?? payload,
     });
   } catch (error) {
     return NextResponse.json(
