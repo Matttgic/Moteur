@@ -58,6 +58,11 @@ const EXCLUDED_TEAM_COMPETITIONS = [
   /laver cup/i,
   /hopman cup/i,
   /united cup/i,
+  /challenger/i,
+  /\bitf\b/i,
+  /\butr\b/i,
+  /junior/i,
+  /exhibition/i,
 ];
 
 function isCancelled(match: LiveMatch) {

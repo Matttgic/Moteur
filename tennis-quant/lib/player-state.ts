@@ -191,16 +191,92 @@ export function buildFullFeatures(
   };
 }
 
+export type HistorySyncFreshness = {
+  fresh: boolean;
+  windowTo: string | null;
+  finishedAt: string | null;
+  ageHours: number | null;
+  reason: string;
+};
+
+export async function getHistorySyncFreshness(
+  tour: ModelTour,
+  now = new Date(),
+): Promise<HistorySyncFreshness> {
+  const supabase = getSupabaseServerClient() as any;
+  if (!supabase) {
+    return {
+      fresh: false,
+      windowTo: null,
+      finishedAt: null,
+      ageHours: null,
+      reason: "supabase_not_configured",
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("tennis_ingestion_runs")
+    .select("window_to,finished_at,status")
+    .eq("tour", tour)
+    .eq("status", "success")
+    .order("window_to", { ascending: false })
+    .limit(1);
+
+  if (error) throw error;
+
+  const latest = data?.[0];
+  const windowTo = latest?.window_to ?? null;
+  const finishedAt = latest?.finished_at ?? null;
+
+  if (!windowTo) {
+    return {
+      fresh: false,
+      windowTo: null,
+      finishedAt,
+      ageHours: null,
+      reason: "no_successful_history_sync",
+    };
+  }
+
+  const timestamp = Date.parse(windowTo);
+  if (!Number.isFinite(timestamp)) {
+    return {
+      fresh: false,
+      windowTo,
+      finishedAt,
+      ageHours: null,
+      reason: "invalid_history_sync_timestamp",
+    };
+  }
+
+  const ageHours = Math.max(0, (now.getTime() - timestamp) / (60 * 60 * 1000));
+  return {
+    fresh: ageHours <= 48,
+    windowTo,
+    finishedAt,
+    ageHours,
+    reason: ageHours <= 48 ? "history_sync_fresh" : "history_sync_stale",
+  };
+}
+
 export function probabilityForLiveMatch(
   tour: ModelTour,
   match: LiveMatch,
   stateA: PlayerStateSnapshot | null,
   stateB: PlayerStateSnapshot | null,
+  allowFullModel = true,
 ): ModelDecisionInput {
   const p1 = match.players?.p1;
   const p2 = match.players?.p2;
   const at = new Date(match.scheduled_time ?? Date.now());
-  const eligibility = fullModelEligibility(stateA, stateB, at);
+  const eligibility = allowFullModel
+    ? fullModelEligibility(stateA, stateB, at)
+    : {
+        eligible: false,
+        quality:
+          stateA && stateB ? Math.min(stateA.dataQuality, stateB.dataQuality) : 0,
+        reason: "history_sync_not_fresh",
+      };
 
   if (
     eligibility.eligible &&
