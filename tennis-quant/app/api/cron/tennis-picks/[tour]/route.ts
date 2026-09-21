@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { heartbeat } from "@/lib/ops";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -50,19 +51,43 @@ export async function GET(
       );
     }
 
+    const picksRecorded = Array.isArray(payload?.bets) ? payload.bets.length : 0;
+
+    await heartbeat({
+      jobName: "pick-capture",
+      tour: tour.toUpperCase() as "ATP" | "WTA",
+      status: "success",
+      details: {
+        status: payload?.status ?? null,
+        picksRecorded,
+        generatedAt: payload?.generatedAt ?? null,
+      },
+    });
+
     return NextResponse.json({
       ok: true,
       tour: tour.toUpperCase(),
       status: payload?.status ?? null,
-      picksRecorded: Array.isArray(payload?.bets) ? payload.bets.length : 0,
+      picksRecorded,
       generatedAt: payload?.generatedAt ?? new Date().toISOString(),
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown_error";
+
+    try {
+      await heartbeat({
+        jobName: "pick-capture",
+        tour: tour.toUpperCase() as "ATP" | "WTA",
+        status: "failed",
+        details: { message },
+      });
+    } catch {}
+
     return NextResponse.json(
       {
         ok: false,
         tour: tour.toUpperCase(),
-        error: error instanceof Error ? error.message : "unknown_error",
+        error: message,
       },
       { status: 500 },
     );
