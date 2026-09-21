@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getTennisOdds, type TennisTour } from "@/lib/oddspapi";
 import {
@@ -9,6 +10,31 @@ import { normalizePlayerName } from "@/lib/player-state";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
+
+const SCHEDULER_TOKEN_SHA256 =
+  "56e58d13e49669747926615b2cff1617d571549a94f1632789414aa63d1f4c75";
+
+function isAuthorized(request: NextRequest) {
+  const authorization = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (cronSecret && authorization === `Bearer ${cronSecret}`) {
+    return true;
+  }
+
+  if (!authorization?.startsWith("Bearer ")) {
+    return false;
+  }
+
+  const token = authorization.slice("Bearer ".length);
+  const actual = createHash("sha256").update(token).digest();
+  const expected = Buffer.from(SCHEDULER_TOKEN_SHA256, "hex");
+
+  return (
+    actual.length === expected.length &&
+    timingSafeEqual(actual, expected)
+  );
+}
 
 type PendingRow = {
   kind: "bet" | "shadow";
@@ -55,10 +81,7 @@ function distance(a?: string | null, b?: string | null) {
 }
 
 export async function GET(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  const authorization = request.headers.get("authorization");
-
-  if (!cronSecret || authorization !== `Bearer ${cronSecret}`) {
+  if (!isAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
