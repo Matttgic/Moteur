@@ -356,14 +356,23 @@ export async function GET(request: NextRequest) {
     : [...FRENCH_EXECUTION_BOOKMAKERS];
 
   try {
-    const [liveResult, oddsResult] = await Promise.all([
-      getUpcomingTourFixtures(liveKey, rawTour as LiveTour),
-      getTennisOdds(
-        oddsKey,
-        rawTour as TennisTour,
-        Array.from(new Set([...executionBookmakers, "pinnacle"])),
+    const liveResult = await getUpcomingTourFixtures(
+      liveKey,
+      rawTour as LiveTour,
+    );
+    const tournamentHints = Array.from(
+      new Set(
+        liveResult.data
+          .map((match) => match.tournament?.trim())
+          .filter((value): value is string => Boolean(value)),
       ),
-    ]);
+    );
+    const oddsResult = await getTennisOdds(
+      oddsKey,
+      rawTour as TennisTour,
+      Array.from(new Set([...executionBookmakers, "pinnacle"])),
+      tournamentHints,
+    );
 
     const playerNames = liveResult.data.flatMap((match) =>
       [match.players?.p1?.name, match.players?.p2?.name].filter(
@@ -735,6 +744,10 @@ export async function GET(request: NextRequest) {
     const fallbackCodeMatch = fallbackError?.match(
       /"(?:error_code|code)"\\s*:\\s*"([A-Z0-9_]+)"/,
     );
+    const quota =
+      oddsDiagnostics?.quota && typeof oddsDiagnostics.quota === "object"
+        ? (oddsDiagnostics.quota as Record<string, unknown>)
+        : null;
     const internalDiagnostics = {
       fallbackHttpStatus: fallbackHttpStatusMatch
         ? Number(fallbackHttpStatusMatch[1])
@@ -742,6 +755,19 @@ export async function GET(request: NextRequest) {
       fallbackErrorCode: fallbackCodeMatch?.[1] ?? null,
       fallbackError:
         typeof fallbackError === "string" ? fallbackError.slice(0, 500) : null,
+      activeSports:
+        typeof oddsDiagnostics?.activeSports === "number"
+          ? oddsDiagnostics.activeSports
+          : null,
+      activeSportsAvailable:
+        typeof oddsDiagnostics?.activeSportsAvailable === "number"
+          ? oddsDiagnostics.activeSportsAvailable
+          : null,
+      quotaRemaining:
+        typeof quota?.remaining === "string" ? quota.remaining : null,
+      quotaUsed: typeof quota?.used === "string" ? quota.used : null,
+      quotaLast: typeof quota?.last === "string" ? quota.last : null,
+      tournamentHints,
     };
 
     const responsePayload = {
