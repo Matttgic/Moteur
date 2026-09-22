@@ -16,13 +16,10 @@
 
 <main id="app" class="wrap">
   <div class="top"><div><div class="brand">EdgeScope</div><div class="muted">Value scanner multi-sports · référence Pinnacle</div></div><span class="badge">EDGESCOPE</span></div>
-  <div class="nav"><button onclick="show('scan')">Scanner</button><button onclick="loadHistory()">Historique</button><button onclick="loadPerf()">Performance</button><button onclick="loadSettings()">Réglages</button></div>
+  <div class="nav"><button onclick="show('scan')">Opportunités</button><button onclick="loadHistory()">Historique</button><button onclick="loadPerf()">Performance</button></div>
 
   <section id="scan">
-    <div class="tools">
-      <div class="card"><b>Tous les sports</b><div class="muted">Détection automatique des sports actifs sur les prochaines 24 h.</div></div>
-      <button id="scanBtn" class="btn primary" onclick="doScan()">Actualiser / contrôler maintenant</button>
-    </div>
+    <div class="card status"><b>Scan 100 % automatique</b><div class="muted">Aucune action manuelle publique : les quotas API sont protégés côté serveur.</div></div>
     <div id="autoStatusCard" class="card status"><b>Scan automatique</b><div class="muted">Chargement de l’état…</div></div>
     <div class="grid">
       <div class="card metric"><span class="muted">Opportunités 24 h</span><b id="n">—</b></div>
@@ -30,58 +27,31 @@
       <div class="card metric"><span class="muted">Dernier scan auto</span><b id="tours">—</b></div>
       <div class="card metric"><span class="muted">Meilleur edge 24 h</span><b id="best">—</b></div>
     </div>
-    <div id="status" class="card muted status">Scan automatique actif. Les chiffres ci-dessus se mettent à jour sans scan manuel.</div>
+    <div id="status" class="card muted status">Scan automatique actif. Les chiffres ci-dessus se mettent à jour sans action manuelle.</div>
+    <h2 class="section-title">Opportunités en cours</h2>
     <div id="rows" class="list"></div>
   </section>
 
   <section id="history" class="hide"><h2 class="section-title">Historique</h2><div id="hrows" class="list"></div></section>
   <section id="performance" class="hide"><h2 class="section-title">Performance</h2><div id="perfgrid" class="grid"></div><div class="card muted">Le ROI n’est calculé qu’à partir des paris réellement enregistrés.</div></section>
-  <section id="settings" class="hide"><h2 class="section-title">Réglages</h2><div class="card"><div class="muted">Les clés sont envoyées à ton backend privé et ne sont jamais réaffichées.</div><br><label>Clé ParlayAPI</label><input id="parlaykey" type="password" placeholder="Clé ParlayAPI déjà configurée"><br><br><label>Clé The Odds API</label><input id="theoddskey" type="password" placeholder="Colle ta clé The Odds API"><br><br><label>Clé OddsPapi</label><input id="opkey" type="password" placeholder="Clé OddsPapi déjà configurée"><br><br><hr style="border:0;border-top:1px solid #273043"><br><b>Notifications Telegram</b><div class="muted" style="margin-top:6px">1. Crée un bot avec @BotFather · 2. Colle son token ici · 3. Envoie /start au bot · 4. Clique “Détecter mon chat”.</div><br><label>Token du bot Telegram</label><input id="tgbot" type="password" placeholder="123456:ABC..."><br><br><div class="betAction"><button class="btn" onclick="detectTelegram()">Détecter mon chat</button><button class="btn" onclick="testTelegram()">Tester la notification</button></div><br><button class="btn primary" onclick="saveSettings()">Valider et enregistrer</button><div id="setstatus" class="muted" style="margin-top:10px"></div></div></section>
-
   <p class="muted small">18+ · Aucun gain garanti. Le score de confiance mesure la qualité technique du signal, pas sa probabilité de gagner.</p>
 </main>
 <script>
 const API='https://tapotyftgyacbnjmeovn.supabase.co/functions/v1/edgescope-api';
-let PIN='ES-788511';
 const pc=n=>(Number(n)*100).toFixed(2)+'%';
 function humanMarket(m=''){const s=String(m).toLowerCase();if(s.includes('first quarter winner'))return 'Vainqueur du 1er quart-temps';if(s.includes('first half winner'))return 'Vainqueur de la 1re mi-temps';if(s.includes('full time result'))return 'Résultat du match';if(s.includes('moneyline'))return 'Vainqueur du match';if(s.includes('winner'))return 'Vainqueur';if(s.includes('total'))return 'Total de points/buts';if(s.includes('handicap')||s.includes('spread'))return 'Handicap';if(s.includes('both teams to score'))return 'Les deux équipes marquent';return m}
 function humanBet(sel='',market=''){const s=String(sel);if(market.includes('Vainqueur'))return s+' gagnent · '+market.toLowerCase();if(market==='Résultat du match')return s==='Nul'?'Match nul':s+' gagnent le match';return market+' — '+s}
 function bookName(k=''){const m={'pmu':'PMU','winamax.fr':'Winamax','unibet.fr':'Unibet','netbet.fr':'NetBet'};return m[k]||k}
 function safeId(v=''){return String(v).replace(/[^a-zA-Z0-9_-]/g,'_')}
 function timeText(mins){if(mins==null)return '';if(mins<0)return 'événement commencé';if(mins<60)return 'dans '+mins+' min';const h=Math.floor(mins/60),m=mins%60;return 'dans '+h+'h'+String(m).padStart(2,'0')}
-async function call(action,options={}){const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');const res=await fetch(url,{method:options.method||'GET',headers:{'x-edgescope-pin':PIN,'content-type':'application/json'},body:options.body?JSON.stringify(options.body):undefined});if(res.status===401){logout();throw new Error('Code PIN invalide');}return res.json()}
-async function login(){return true}
-function logout(){location.reload()}
-function show(id){for(const x of ['scan','history','performance','settings']){const el=document.getElementById(x);if(el)el.classList.toggle('hide',x!==id)}}
-async function doScan(){
- show('scan');scanBtn.disabled=true;status.textContent='Contrôle du moteur automatique…';
- try{
-  const x=await call('autoscan');
-  await loadAutoStatus();
-  if(x.status==='error')status.textContent='Erreur du moteur automatique : '+(x.message||x.provider||'inconnue');
-  else if(x.skipped==='quota_wait')status.textContent='Scan auto actif · prochain vrai scan dans environ '+x.nextPaidInMinutes+' min (protection du quota gratuit).';
-  else status.textContent='Contrôle terminé · '+Number(x.checked||0)+' sport(s) interrogé(s) · '+Number(x.opportunities||0)+' nouveau(x) signal(aux).';
- }catch(e){status.textContent='Erreur : '+(e?.message||'réseau ou authentification.')}
- finally{scanBtn.disabled=false}
+async function call(action,options={}){
+ const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');
+ const headers=options.body?{'content-type':'application/json'}:{};
+ const res=await fetch(url,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined});
+ if(!res.ok)throw new Error('API '+res.status);
+ return res.json()
 }
-async function refreshQuote(id){
-const sid=safeId(id),box=document.getElementById('quote-'+sid),oddsBox=document.getElementById('odds-'+sid);
-if(box)box.innerHTML='<span class="wait">Actualisation…</span> comparaison Pinnacle + bookmakers FR.';
-try{
- const x=await call('quote',{extra:'&id='+encodeURIComponent(id)});
- if(x.status!=='ok'){if(box)box.innerHTML='<span class="stop">Impossible d’actualiser.</span>';return}
- const checked=new Date(x.checkedAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
- if(x.decision==='BET_NOW'){
-   if(oddsBox)oddsBox.textContent='@ '+Number(x.bestOdds).toFixed(2)+' chez '+x.bestBookmakerTitle;
-   if(box)box.innerHTML='<span class="now">PARIER MAINTENANT</span> · meilleure cote <b>'+Number(x.bestOdds).toFixed(2)+' chez '+x.bestBookmakerTitle+'</b> · minimum acceptable <b>'+Number(x.minOdds).toFixed(2)+'</b> · '+timeText(x.minutesToStart)+' · vérifié à '+checked+'.'+(x.fixturePath?' <a class="bookLink" target="_blank" rel="noopener" href="'+x.fixturePath+'">Ouvrir le bookmaker</a>':'');
- }else{
-   const current=x.bestOdds?Number(x.bestOdds).toFixed(2):'aucune';
-   const min=x.minOdds?Number(x.minOdds).toFixed(2):'—';
-   if(oddsBox&&x.bestOdds)oddsBox.textContent='@ '+current+' chez '+(x.bestBookmakerTitle||'bookmaker');
-   if(box)box.innerHTML='<span class="stop">NE PLUS PARIER</span> · meilleure cote actuelle '+current+' · il faut au moins <b>'+min+'</b> · vérifié à '+checked+'.';
- }
-}catch(e){if(box)box.innerHTML='<span class="stop">Erreur d’actualisation.</span> Réessaie dans quelques secondes.'}
-}
+function show(id){for(const x of ['scan','history','performance']){const el=document.getElementById(x);if(el)el.classList.toggle('hide',x!==id)}}
 async function loadAutoStatus(){
  try{
   const x=await call('autostatus'),s=x.data||{};
@@ -99,6 +69,21 @@ async function loadAutoStatus(){
   autoStatusCard.innerHTML='<b>Scan automatique</b><div class="muted">État indisponible momentanément.</div>';
   status.textContent='Impossible de charger les métriques automatiques pour le moment.';
  }
+}
+
+
+async function loadSignals(){
+ try{
+  const x=await call('history');
+  const active=(x.rows||[]).filter(r=>!r.settlement_result).slice(0,8);
+  rows.innerHTML=active.map(r=>{
+   const market=humanMarket(r.market_key||'');
+   const bet=humanBet(r.selection||'',market);
+   const when=r.detected_at?new Date(r.detected_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+   const min=Number(r.fair_odds||0)>0?(Number(r.fair_odds)*1.025).toFixed(2):'—';
+   return '<article class="betCard"><div class="betTop"><span class="signal">AUTO</span><span class="sportTag">'+String(r.sport_key||'')+'</span></div><div class="betTitle">OPPORTUNITÉ DÉTECTÉE</div><div class="betPick">'+bet+'</div><div class="betOdds">@ '+Number(r.offered_odds||0).toFixed(2)+' chez '+bookName(r.bookmaker_key)+'</div><div class="betEvent">'+r.event_name+(when?' · détecté '+when:'')+'</div><div class="betMeta"><span>Cote mini <b>'+min+'</b></span><span>Edge <b class="good">'+pc(r.edge)+'</b></span><span>Score technique <b>'+Number(r.confidence||0)+'/100</b></span></div></article>'
+  }).join('')||'<div class="card muted">Aucune opportunité en attente actuellement.</div>';
+ }catch(e){rows.innerHTML='<div class="card muted">Impossible de charger les opportunités momentanément.</div>'}
 }
 
 async function loadHistory(open=true){
@@ -133,13 +118,15 @@ async function loadPerf(){
  ['En attente',p.pending||0]
  ].map(a=>'<div class="card metric"><span class="muted">'+a[0]+'</span><b>'+a[1]+'</b></div>').join('')
 }
-async function detectTelegram(){setstatus.textContent='Recherche du chat Telegram…';const x=await call('telegramdetect');if(x.status==='ok'){setstatus.textContent='Telegram détecté ✅ Tu peux tester la notification.'}else{setstatus.textContent=x.message||'Envoie /start à ton bot Telegram puis réessaie.'}}
-async function testTelegram(){setstatus.textContent='Envoi du test…';const x=await call('telegramtest');setstatus.textContent=x.status==='ok'?'Notification test envoyée ✅':'Telegram pas encore configuré correctement.'}
-async function loadSettings(){show('settings');const x=await call('settings');setstatus.textContent='ParlayAPI : '+(x.parlayapi?'configuré':'à configurer')+' · The Odds API : '+(x.theoddsapi?'configuré':'à configurer')+' · OddsPapi : '+(x.oddspapi?'configuré':'à configurer')+' · Telegram : '+(x.telegram?'ACTIF':'à configurer')}
-async function saveSettings(){const pkey=parlaykey.value.trim(),tkey=theoddskey.value.trim(),okey=opkey.value.trim(),bot=tgbot.value.trim();if(!pkey&&!tkey&&!okey&&!bot){setstatus.textContent='Colle au moins une clé ou un token à enregistrer.';return}setstatus.textContent='Validation…';const body={};if(pkey)body.parlayApiKey=pkey;if(tkey)body.theOddsApiKey=tkey;if(okey)body.oddspapiKey=okey;if(bot)body.telegramBotToken=bot;const x=await call('settings',{method:'POST',body});if(x.error){setstatus.textContent=x.message||x.error;return}parlaykey.value='';theoddskey.value='';opkey.value='';tgbot.value='';setstatus.textContent='Enregistré. Pour Telegram, envoie maintenant /start à ton bot puis clique “Détecter mon chat”.'}
-loadSettings().catch(()=>{});loadAutoStatus();show('scan')
 
-setInterval(()=>{if(PIN){loadAutoStatus();if(!document.getElementById('history').classList.contains('hide'))loadHistory(false)}},60000);
+loadAutoStatus();
+loadSignals();
+show('scan');
+setInterval(()=>{
+ loadAutoStatus();
+ loadSignals();
+ if(!document.getElementById('history').classList.contains('hide'))loadHistory(false);
+},60000);
 </script>
 </body>
 </html>
