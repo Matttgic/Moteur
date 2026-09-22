@@ -4,6 +4,8 @@ const TENNIS_WINNER_MARKET_ID = 121;
 const TENNIS_WINNER_OUTCOME_1 = "121";
 const TENNIS_WINNER_OUTCOME_2 = "122";
 const THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4";
+const ODDSPAPI_DISCOVERY_CACHE_SECONDS = 900;
+const ODDSPAPI_PRICE_CACHE_SECONDS = 300;
 
 const THE_ODDS_API_BOOKMAKERS: Record<string, string> = {
   "winamax.fr": "winamax_fr",
@@ -678,7 +680,7 @@ export async function getTennisOdds(
       statusId: "0",
       language: "en",
     },
-    21_600,
+    ODDSPAPI_DISCOVERY_CACHE_SECONDS,
   );
 
   const boardFixtures = normalizeFixturePayload(fixturePayload)
@@ -729,7 +731,7 @@ export async function getTennisOdds(
         sportId: String(TENNIS_SPORT_ID),
         language: "en",
       },
-      21_600,
+      ODDSPAPI_DISCOVERY_CACHE_SECONDS,
     );
 
     const fallbackTournaments = normalizeTournamentPayload(tournamentPayload)
@@ -810,7 +812,7 @@ export async function getTennisOdds(
             verbosity: "3",
             oddsFormat: "decimal",
           },
-          21_600,
+          ODDSPAPI_PRICE_CACHE_SECONDS,
         );
 
         requests += 1;
