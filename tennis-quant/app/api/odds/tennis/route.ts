@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json({
-      source: "OddsPapi",
+      source: result.provider ?? "OddsPapi",
       sport: "tennis",
       scope: "ATP_WTA_main_tour_singles",
       price_policy: {
@@ -59,7 +59,8 @@ export async function GET(request: NextRequest) {
         sharp_reference: "pinnacle",
         odds_format: "decimal",
         vig_removed: true,
-        cache_hours: 12,
+        cache_minutes:
+          result.provider === "The Odds API" ? 15 : 360,
       },
       ...result,
     });
