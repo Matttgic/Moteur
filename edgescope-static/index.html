@@ -60,11 +60,11 @@ async function loadAutoStatus(){
   const actual=s.last_paid_scan_at?new Date(s.last_paid_scan_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'—';
   const next=s.last_mode==='free-safe'?'1 vrai scan/h · contrôle toutes les 15 min':'scan multi-sports toutes les 15 min';
   autoStatusCard.innerHTML='<div class="historyHead"><b>🟢 AUTO ACTIF · '+mode+'</b><span class="pill">'+(s.last_status||'prêt')+'</span></div><div class="muted" style="margin-top:7px">'+next+' · dernier contrôle '+last+' · dernier scan cotes '+actual+'</div><div class="betMeta"><span>Parlay <b>'+Number(s.parlay_used||0)+'/ '+(Number(s.parlay_used||0)+Number(s.parlay_remaining||0)||'—')+'</b></span><span>The Odds <b>'+Number(s.theodds_remaining||0)+' restants</b></span><span>Derniers signaux <b>'+Number(s.last_opportunities||0)+'</b></span></div>';
-  n.textContent=Number(s.opportunities24h||0);
+  n.textContent=Number(s.executable24h||0);
   sports.textContent=Number(s.sportsScanned24h||0);
   tours.textContent=actual;
   best.textContent=s.bestEdge24h==null?'—':pc(s.bestEdge24h);
-  status.textContent='Métriques du scan automatique · '+Number(s.opportunities24h||0)+' opportunité(s) détectée(s) sur les dernières 24 h.';
+  status.textContent='24 h : '+Number(s.opportunities24h||0)+' signal(aux) détecté(s) · '+Number(s.executable24h||0)+' réellement revérifié(s) et exécutable(s).';
  }catch(e){
   autoStatusCard.innerHTML='<b>Scan automatique</b><div class="muted">État indisponible momentanément.</div>';
   status.textContent='Impossible de charger les métriques automatiques pour le moment.';
