@@ -196,7 +196,7 @@ export default function EconomicValidation() {
   const stats = data.overall;
 
   return (
-    <section className="economicPanel" aria-label="Validation économique">
+    <section className="economicPanel" aria-label="Validation économique" data-history-version="2">
       <div className="economicHeader">
         <div>
           <p className="eyebrow">ECONOMIC VALIDATION · LIVE TRACKING</p>
