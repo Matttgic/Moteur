@@ -113,3 +113,8 @@ This cadence keeps the public UI fresh without allowing page traffic to consume 
 - `NO BET` means data was available and no selection passed the betting rules.
 - `DATA_UNAVAILABLE` means the required market data was not available.
 - No claim of guaranteed profitability.
+
+
+## The Odds API quota protection
+
+- The Odds API fallback uses a 2-hour server cache for price-board requests so the 500-credit monthly quota is not exhausted by 30-minute selection snapshots. The free `/sports` discovery remains cached separately.

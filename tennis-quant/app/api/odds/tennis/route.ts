@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         odds_format: "decimal",
         vig_removed: true,
         cache_minutes:
-          result.provider === "The Odds API" ? 15 : 5,
+          result.provider === "The Odds API" ? 120 : 5,
       },
       ...result,
     });

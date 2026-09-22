@@ -6,6 +6,7 @@ const TENNIS_WINNER_OUTCOME_2 = "122";
 const THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4";
 const ODDSPAPI_DISCOVERY_CACHE_SECONDS = 900;
 const ODDSPAPI_PRICE_CACHE_SECONDS = 300;
+const THE_ODDS_API_PRICE_CACHE_SECONDS = 7_200;
 
 const THE_ODDS_API_BOOKMAKERS: Record<string, string> = {
   "winamax.fr": "winamax_fr",
@@ -598,7 +599,7 @@ async function getTheOddsApiTennisOdds(
         commenceTimeFrom: window.from.replace(/\.\d{3}Z$/, "Z"),
         commenceTimeTo: window.to.replace(/\.\d{3}Z$/, "Z"),
       },
-      900,
+      THE_ODDS_API_PRICE_CACHE_SECONDS,
     );
 
     requests += 1;
