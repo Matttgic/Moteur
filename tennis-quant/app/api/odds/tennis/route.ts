@@ -18,6 +18,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const cronSecret = process.env.CRON_SECRET;
+  const authorization = request.headers.get("authorization");
+
+  if (!cronSecret || authorization !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
   const apiKey = process.env.ODDS_PAPI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -32,6 +39,21 @@ export async function GET(request: NextRequest) {
 
   const requestedBookmaker =
     request.nextUrl.searchParams.get("bookmaker")?.trim() || null;
+
+  if (
+    requestedBookmaker &&
+    !FRENCH_EXECUTION_BOOKMAKERS.includes(
+      requestedBookmaker as (typeof FRENCH_EXECUTION_BOOKMAKERS)[number],
+    )
+  ) {
+    return NextResponse.json(
+      {
+        error: "unsupported_bookmaker",
+        allowed: [...FRENCH_EXECUTION_BOOKMAKERS],
+      },
+      { status: 400 },
+    );
+  }
 
   const bookmakers = requestedBookmaker
     ? Array.from(new Set([requestedBookmaker, "pinnacle"]))
@@ -60,7 +82,7 @@ export async function GET(request: NextRequest) {
         odds_format: "decimal",
         vig_removed: true,
         cache_minutes:
-          result.provider === "The Odds API" ? 15 : 360,
+          result.provider === "The Odds API" ? 15 : 5,
       },
       ...result,
     });
