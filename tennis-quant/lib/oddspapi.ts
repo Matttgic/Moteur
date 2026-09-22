@@ -551,8 +551,8 @@ async function getTheOddsApiTennisOdds(
         markets: "h2h",
         oddsFormat: "decimal",
         dateFormat: "iso",
-        commenceTimeFrom: window.from,
-        commenceTimeTo: window.to,
+        commenceTimeFrom: window.from.replace(/\.\d{3}Z$/, "Z"),
+        commenceTimeTo: window.to.replace(/\.\d{3}Z$/, "Z"),
       },
       900,
     );
