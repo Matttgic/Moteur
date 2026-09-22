@@ -117,17 +117,36 @@ async function loadHistory(open=true){
 }
 async function loadPerf(){
  show('performance');
- const x=await call('performance'),p=x.data||{};
+ const x=await call('performance'),p=x.data||{},e=p.executable||{},clv=p.clv||{};
+ const erecord=(e.wins||0)+'-'+(e.losses||0)+'-'+(e.pushes||0);
+ execgrid.innerHTML=[
+  ['Exécutables',e.signals||0],
+  ['Résolus',e.settled||0],
+  ['Record W-L-P',erecord],
+  ['Réussite',e.hitRate==null?'—':pc(e.hitRate)],
+  ['P&L test 10 €',(Number(e.pnl||0)>=0?'+':'')+Number(e.pnl||0).toFixed(2)+' €'],
+  ['ROI',e.roi==null?'—':pc(e.roi)],
+  ['Drawdown max',Number(e.maxDrawdownEuros||0).toFixed(2)+' €'],
+  ['En attente',e.pending||0]
+ ].map(a=>'<div class="card metric"><span class="muted">'+a[0]+'</span><b>'+a[1]+'</b></div>').join('');
+
+ const target=Number(e.validationTarget||100),done=Number(e.graded||0),progress=Math.min(100,Math.round(Number(e.validationProgress||0)*100));
+ validationCard.innerHTML='<div class="historyHead"><b>Validation réelle</b><span class="pill">'+done+' / '+target+' paris résolus</span></div><div class="muted" style="margin-top:7px">Objectif minimum avant de juger le moteur : '+target+' signaux revérifiés et réglés.</div><div class="progress"><span style="width:'+progress+'%"></span></div>';
+
+ clvCard.innerHTML=clv.samples
+  ? '<b>CLV · '+Number(clv.samples)+' snapshot(s)</b><div class="betMeta"><span>CLV moyen <b class="'+(Number(clv.average)>=0?'good':'bad')+'">'+(Number(clv.average)>=0?'+':'')+pc(clv.average)+'</b></span><span>CLV positif <b>'+pc(clv.positiveRate)+'</b></span></div><div class="muted small" style="margin-top:8px">Comparaison de la cote exécutable avec une cote juste capturée au plus près du début disponible.</div>'
+  : '<b>CLV</b><div class="muted" style="margin-top:7px">Pas encore assez de snapshots proches de la clôture. Ils sont désormais collectés automatiquement.</div>';
+
  const record=(p.wins||0)+'-'+(p.losses||0)+'-'+(p.pushes||0);
  perfgrid.innerHTML=[
- ['Signaux',p.signals||0],
- ['Résolus',p.settled||0],
- ['Record W-L-P',record],
- ['Réussite',p.hitRate==null?'—':pc(p.hitRate)],
- ['P&L test 10 €',(Number(p.pnl||0)>=0?'+':'')+Number(p.pnl||0).toFixed(2)+' €'],
- ['ROI',p.roi==null?'—':pc(p.roi)],
- ['Drawdown max',Number(p.maxDrawdownEuros||0).toFixed(2)+' €'],
- ['En attente',p.pending||0]
+  ['Détections',p.signals||0],
+  ['Résolus',p.settled||0],
+  ['Record W-L-P',record],
+  ['Réussite',p.hitRate==null?'—':pc(p.hitRate)],
+  ['P&L détection 10 €',(Number(p.pnl||0)>=0?'+':'')+Number(p.pnl||0).toFixed(2)+' €'],
+  ['ROI détection',p.roi==null?'—':pc(p.roi)],
+  ['Drawdown max',Number(p.maxDrawdownEuros||0).toFixed(2)+' €'],
+  ['En attente',p.pending||0]
  ].map(a=>'<div class="card metric"><span class="muted">'+a[0]+'</span><b>'+a[1]+'</b></div>').join('')
 }
 
