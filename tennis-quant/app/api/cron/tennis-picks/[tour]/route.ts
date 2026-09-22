@@ -28,9 +28,12 @@ export async function GET(
   try {
     const origin = request.nextUrl.origin;
     const response = await fetch(
-      `${origin}/api/selections/today?tour=${tour}`,
+      `${origin}/api/selections/today?tour=${tour}&refresh=1`,
       {
-        headers: { Accept: "application/json" },
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${cronSecret}`,
+        },
         cache: "no-store",
       },
     );
