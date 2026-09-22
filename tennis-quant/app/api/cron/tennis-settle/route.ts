@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isCronAuthorized } from "@/lib/cron-auth";\nimport { heartbeat, settleAll } from "@/lib/ops";
+import { isCronAuthorized } from "@/lib/cron-auth";
+import { heartbeat, settleAll } from "@/lib/ops";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
