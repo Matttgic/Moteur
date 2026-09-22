@@ -4,6 +4,7 @@ import { recordShadowPicks } from "@/lib/ops";
 import {
   FULL_MODEL_BENCHMARK,
   RANK_ONLY_BENCHMARK,
+  getModelSpec,
   type ModelTour,
 } from "@/lib/calibrated-model";
 import {
@@ -22,10 +23,17 @@ import {
   normalizePlayerName,
   probabilityForLiveMatch,
 } from "@/lib/player-state";
+import {
+  getSelectionSnapshot,
+  saveSelectionSnapshot,
+} from "@/lib/selection-snapshots";
 
 export const runtime = "nodejs";
 
 const ALLOWED_TOURS = new Set<LiveTour>(["atp", "wta"]);
+const ALLOWED_EXECUTION_BOOKMAKERS = new Set<string>(
+  FRENCH_EXECUTION_BOOKMAKERS,
+);
 
 function canonicalExternalName(value: string) {
   const trimmed = value.trim();
@@ -234,6 +242,56 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const modelTour = rawTour.toUpperCase() as ModelTour;
+  const cronSecret = process.env.CRON_SECRET;
+  const authorizedRefresh =
+    request.nextUrl.searchParams.get("refresh") === "1" &&
+    Boolean(cronSecret) &&
+    request.headers.get("authorization") === `Bearer ${cronSecret}`;
+
+  if (!authorizedRefresh) {
+    try {
+      const snapshot = await getSelectionSnapshot(modelTour);
+
+      if (!snapshot) {
+        return NextResponse.json(
+          {
+            error: "selection_snapshot_unavailable",
+            message:
+              "Aucune sélection calculée n'est encore disponible. Le prochain job privé alimentera le snapshot.",
+            tour: modelTour,
+          },
+          { status: 503 },
+        );
+      }
+
+      const ageMinutes = Math.max(
+        0,
+        (Date.now() - Date.parse(snapshot.generatedAt)) / 60_000,
+      );
+
+      return NextResponse.json({
+        ...snapshot.payload,
+        snapshot: {
+          mode: "read_only",
+          generatedAt: snapshot.generatedAt,
+          updatedAt: snapshot.updatedAt,
+          ageMinutes,
+          stale: ageMinutes > 75,
+        },
+      });
+    } catch (error) {
+      return NextResponse.json(
+        {
+          error: "selection_snapshot_read_failed",
+          message: error instanceof Error ? error.message : "Unknown error",
+          tour: modelTour,
+        },
+        { status: 503 },
+      );
+    }
+  }
+
   const liveKey = process.env.LIVE_TENNIS_API_KEY;
   const oddsKey = process.env.ODDS_PAPI_API_KEY;
 
@@ -252,6 +310,20 @@ export async function GET(request: NextRequest) {
 
   const requestedBookmaker =
     request.nextUrl.searchParams.get("bookmaker")?.trim() || null;
+
+  if (
+    requestedBookmaker &&
+    !ALLOWED_EXECUTION_BOOKMAKERS.has(requestedBookmaker)
+  ) {
+    return NextResponse.json(
+      {
+        error: "unsupported_bookmaker",
+        allowed: [...FRENCH_EXECUTION_BOOKMAKERS],
+      },
+      { status: 400 },
+    );
+  }
+
   const executionBookmakers = requestedBookmaker
     ? [requestedBookmaker]
     : [...FRENCH_EXECUTION_BOOKMAKERS];
@@ -266,7 +338,6 @@ export async function GET(request: NextRequest) {
       ),
     ]);
 
-    const modelTour = rawTour.toUpperCase() as ModelTour;
     const playerNames = liveResult.data.flatMap((match) =>
       [match.players?.p1?.name, match.players?.p2?.name].filter(
         (value): value is string => Boolean(value),
@@ -431,7 +502,10 @@ export async function GET(request: NextRequest) {
           quality: model.quality,
           reason: model.reason,
           features: model.features,
-          trainedThrough: "2026-05-25",
+          trainedThrough: getModelSpec(
+            modelTour,
+            model.mode === "full_logit" ? "full" : "rank_only",
+          ).trained_through,
           benchmark:
             model.mode === "full_logit"
               ? FULL_MODEL_BENCHMARK[modelTour]
@@ -600,10 +674,19 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    return NextResponse.json({
-      generatedAt: new Date().toISOString(),
+    const generatedAt = new Date().toISOString();
+    const dataUnavailable =
+      liveResult.model_eligible_matches > 0 &&
+      oddsResult.fixtures.length === 0;
+
+    const responsePayload = {
+      generatedAt,
       tour: modelTour,
-      status: bets.length ? "BET_OPPORTUNITIES_FOUND" : "NO_BET_TODAY",
+      status: dataUnavailable
+        ? ("DATA_UNAVAILABLE" as const)
+        : bets.length
+          ? ("BET_OPPORTUNITIES_FOUND" as const)
+          : ("NO_BET_TODAY" as const),
       modelPolicy: {
         fullModelEnabledForLive: historySync.fresh,
         historySync,
@@ -632,6 +715,19 @@ export async function GET(request: NextRequest) {
       bets,
       allAnalyzed: analyzed,
       rejected,
+    };
+
+    await saveSelectionSnapshot(modelTour, responsePayload);
+
+    return NextResponse.json({
+      ...responsePayload,
+      snapshot: {
+        mode: "fresh_private_refresh",
+        generatedAt,
+        updatedAt: generatedAt,
+        ageMinutes: 0,
+        stale: false,
+      },
     });
   } catch (error) {
     const status =

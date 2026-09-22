@@ -161,6 +161,14 @@ export default function EconomicValidation() {
     [history],
   );
 
+  const pendingStakeUnits = useMemo(
+    () =>
+      history
+        .filter((row) => row.result == null)
+        .reduce((sum, row) => sum + Number(row.stakeUnits ?? 0), 0),
+    [history],
+  );
+
   if (error) {
     return (
       <article className="economicGate">
@@ -225,7 +233,9 @@ export default function EconomicValidation() {
           <strong className={stats.profitUnits >= 0 ? "positive" : "negative"}>
             {units(stats.profitUnits)}
           </strong>
-          <small>{stats.stakeUnits.toFixed(2)}u engagées</small>
+          <small>
+            {stats.stakeUnits.toFixed(2)}u réglées · {pendingStakeUnits.toFixed(2)}u en attente
+          </small>
         </article>
         <article>
           <span>ROI réel</span>

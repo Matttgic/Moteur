@@ -1,26 +1,69 @@
 # Tennis Quant Engine — Production Status
 
-## Ready
+## Stack
 
-- GitHub main contains the validated ATP/WTA quant engine.
-- Supabase project `Tennis Quant` is active in `eu-west-3`.
-- 7 core tennis tables are deployed with RLS enabled.
-- Direct table privileges are revoked from `anon` and `authenticated`.
-- Foreign-key indexes are deployed.
-- ATP and WTA champion model runs are stored in `tennis_model_runs`.
-- Supabase TypeScript types are generated and committed.
-- Edge Function `tennis-model-status` is deployed and JWT-protected.
-- CI validates:
-  - TypeScript
-  - Next.js build
-  - ML unit tests
-  - ATP walk-forward benchmark
-  - WTA walk-forward benchmark
-  - odds / ROI / CLV utilities
+- **Vercel project:** `moteur`
+- **Application root:** `tennis-quant/`
+- **Primary function region:** `fra1`
+- **Supabase project:** `Tennis Quant` (`eu-west-3`)
+- **Primary branch:** `main`
+
+## Production data flow
+
+1. Authenticated server jobs call Live Tennis API and OddsPapi.
+2. The calibrated ATP/WTA model computes fair probabilities and betting decisions.
+3. Actionable FULL-ML selections are recorded in the economic log.
+4. Shadow variants are recorded separately for research.
+5. The latest complete ATP/WTA response is persisted in `tennis_selection_snapshots`.
+6. Public users read only that snapshot. Public page loads do not consume Live Tennis or odds-provider calls.
+
+## Provider responsibilities
+
+### Live Tennis API BASIC
+
+Used for:
+
+- upcoming ATP/WTA fixtures,
+- player/ranking fields carried by provider fixtures,
+- completed match history,
+- official-result synchronization,
+- player-state freshness.
+
+It is **not** the execution-odds source.
+
+### OddsPapi
+
+Primary source for bookmaker moneyline prices.
+
+Caching policy:
+
+- discovery: 15 minutes,
+- execution prices: 5 minutes.
+
+### The Odds API
+
+Optional fallback if OddsPapi cannot produce a usable board.
+
+Environment variable:
+
+`THE_ODDS_API_KEY`
+
+If this key is not configured, the system remains operational with OddsPapi but can expose `DATA_UNAVAILABLE` for a tour whose primary board is empty. The UI must never label that condition as `NO BET`.
+
+## Security / quota hardening
+
+- `/api/selections/today` is public but read-only.
+- Provider refresh requires `refresh=1` plus `Authorization: Bearer <CRON_SECRET>`.
+- Public requests cannot record economic or shadow picks.
+- `/api/odds/tennis` is private.
+- Requested execution bookmakers are restricted to the French allowlist.
+- `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, Live Tennis and odds keys remain server-side.
+- `tennis_selection_snapshots` has RLS enabled and direct privileges revoked from `anon` and `authenticated`.
 
 ## Validated model quality
 
 ### ATP
+
 - OOS matches: 10,514
 - Accuracy: 65.01%
 - Log Loss: 0.61894
@@ -28,46 +71,43 @@
 - ECE-10: 0.00956
 
 ### WTA
+
 - OOS matches: 4,485
 - Accuracy: 66.06%
 - Log Loss: 0.61341
 - Brier: 0.21260
 - ECE-10: 0.01075
 
-## External gates
+The API reads the `trained_through` field from each committed model specification. It must not hard-code a training date.
 
-### Live ATP/WTA fixtures
-The app is coded to support a legitimate provider and fail closed when not configured.
-A free provider account/key is still required for full ATP + WTA coverage.
+## Operations
 
-Recommended currently verified option:
-- Live Tennis API FREE: upcoming/live fixtures, ATP/WTA, no card.
-- Configure server-side as `LIVE_TENNIS_API_KEY`.
+Vercel cron remains a low-frequency backstop. More frequent production operations can run through Supabase Cron, authenticated with the scheduler token stored in Vault.
 
-### Betting odds
-Do not scrape bookmaker pages.
+Recommended cadence after the hardened build is live:
 
-Free-key options verified during R&D include:
-- Odds API providers with free quotas for ATP/WTA pre-match odds.
-- Historical odds remain provider-dependent.
+- ATP selection snapshot: every 30 minutes.
+- WTA selection snapshot: every 30 minutes, staggered from ATP.
+- Incremental ATP result sync: every 2 hours with a 12-hour window.
+- Incremental WTA result sync: every 2 hours, staggered.
+- Economic settlement: hourly.
+- CLV refresh: hourly.
+- Provider health: every 6 hours.
 
-The economic layer must not claim ROI until authorized timestamped historical odds
-have been connected and evaluated out of sample.
+This cadence keeps the public UI fresh without allowing page traffic to consume the Live Tennis BASIC quota.
 
-## Deployment
+## Economic validation semantics
 
-The code is deployable as a Next.js app from `tennis-quant/`.
-The current chat integrations did not expose a safe way to bind the GitHub subdirectory
-to a new Vercel project automatically. Do not repurpose an existing Vercel football project.
-
-A Netlify site named `tennis-quant-engine` was created, but the connected deploy tool
-requires a source-directory CLI upload. The execution environment in this chat had no
-outbound network access, so that upload could not be completed here.
+- `stakeUnits` in aggregate ROI represents **settled stake**.
+- Pending stake is displayed separately from settled stake.
+- ROI and profit are realized metrics only.
+- A pending pick can settle only after the official result has been synchronized into `tennis_matches`.
 
 ## Non-negotiable behavior
 
 - No invented fixtures.
 - No invented odds.
 - No forced bets.
-- `NO BET` is a valid daily output.
-- No profitability claim before economic validation.
+- `NO BET` means data was available and no selection passed the betting rules.
+- `DATA_UNAVAILABLE` means the required market data was not available.
+- No claim of guaranteed profitability.

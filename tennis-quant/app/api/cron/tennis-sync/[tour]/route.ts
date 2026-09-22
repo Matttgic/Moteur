@@ -38,8 +38,14 @@ export async function GET(
     );
   }
 
+  const rawHours = Number(request.nextUrl.searchParams.get("hours") ?? "72");
+  const hours =
+    Number.isFinite(rawHours) && rawHours >= 1
+      ? Math.min(Math.floor(rawHours), 72)
+      : 72;
+
   const to = new Date();
-  const from = new Date(to.getTime() - 3 * 24 * 60 * 60 * 1000);
+  const from = new Date(to.getTime() - hours * 60 * 60 * 1000);
 
   try {
     const edgeResponse = await fetch(EDGE_RUNTIME_URL, {
@@ -81,6 +87,7 @@ export async function GET(
       window: {
         from: from.toISOString(),
         to: to.toISOString(),
+        hours,
       },
       result: payload?.result ?? payload,
       schedule: request.headers.get("x-vercel-cron-schedule"),
