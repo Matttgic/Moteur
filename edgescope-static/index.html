@@ -12,19 +12,11 @@
 </style>
 </head>
 <body>
-<div id="login" class="login wrap">
-  <div class="card">
-    <h1>EdgeScope</h1>
-    <div class="muted">Accès privé au scanner</div>
-    <input id="pin" type="password" inputmode="text" autocomplete="off" placeholder="Code PIN">
-    <button class="btn primary" onclick="login()">Entrer</button>
-    <div id="loginMsg" class="muted" style="margin-top:10px"></div>
-  </div>
-</div>
+<div id="login" class="hide"></div>
 
-<main id="app" class="wrap hide">
-  <div class="top"><div><div class="brand">EdgeScope</div><div class="muted">Value scanner multi-sports · référence Pinnacle</div></div><span class="badge">GITHUB PAGES</span></div>
-  <div class="nav"><button onclick="show('scan')">Scanner</button><button onclick="loadHistory()">Historique</button><button onclick="loadPerf()">Performance</button><button onclick="loadSettings()">Réglages</button><button onclick="logout()">Quitter</button></div>
+<main id="app" class="wrap">
+  <div class="top"><div><div class="brand">EdgeScope</div><div class="muted">Value scanner multi-sports · référence Pinnacle</div></div><span class="badge">EDGESCOPE</span></div>
+  <div class="nav"><button onclick="show('scan')">Scanner</button><button onclick="loadHistory()">Historique</button><button onclick="loadPerf()">Performance</button><button onclick="loadSettings()">Réglages</button></div>
 
   <section id="scan">
     <div class="tools">
@@ -59,7 +51,7 @@ function safeId(v=''){return String(v).replace(/[^a-zA-Z0-9_-]/g,'_')}
 function timeText(mins){if(mins==null)return '';if(mins<0)return 'événement commencé';if(mins<60)return 'dans '+mins+' min';const h=Math.floor(mins/60),m=mins%60;return 'dans '+h+'h'+String(m).padStart(2,'0')}
 async function call(action,options={}){const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');const res=await fetch(url,{method:options.method||'GET',headers:{'x-edgescope-pin':PIN,'content-type':'application/json'},body:options.body?JSON.stringify(options.body):undefined});if(res.status===401){logout();throw new Error('Code PIN invalide');}return res.json()}
 async function login(){return true}
-function logout(){localStorage.removeItem('edgescope_pin');PIN='';document.getElementById('app').classList.add('hide');document.getElementById('login').classList.remove('hide')}
+function logout(){location.reload()}
 function show(id){for(const x of ['scan','history','performance','settings'])document.getElementById(x).classList.toggle('hide',x!==id)}
 async function doScan(){
  show('scan');scanBtn.disabled=true;status.textContent='Contrôle du moteur automatique…';
