@@ -50,7 +50,7 @@ type BetRow = {
 type SelectionResponse = {
   generatedAt: string;
   tour: Tour;
-  status: "BET_OPPORTUNITIES_FOUND" | "NO_BET_TODAY";
+  status: "BET_OPPORTUNITIES_FOUND" | "NO_BET_TODAY" | "DATA_UNAVAILABLE";
   modelPolicy: {
     fullModelEnabledForLive: boolean;
     fullModelMatches: number;
@@ -63,10 +63,20 @@ type SelectionResponse = {
   };
   bets: BetRow[];
   sourceSummary: {
+    oddsProvider?: string;
+    oddsDiscoveryMode?: string | null;
     liveAccepted: number;
+    liveModelEligible?: number;
     oddsFixtures: number;
     analyzed: number;
     rejected: number;
+  };
+  snapshot?: {
+    mode: "read_only" | "fresh_private_refresh";
+    generatedAt: string;
+    updatedAt: string;
+    ageMinutes: number;
+    stale: boolean;
   };
 };
 
@@ -163,7 +173,7 @@ export default function LiveSelections() {
             onClick={() => void load(tour)}
             disabled={loading}
           >
-            {loading ? "Chargement…" : "Actualiser"}
+            {loading ? "Chargement…" : "Rafraîchir l’affichage"}
           </button>
         </div>
       </div>
@@ -264,19 +274,32 @@ export default function LiveSelections() {
                 </article>
               ))}
             </div>
+          ) : data.status === "DATA_UNAVAILABLE" ? (
+            <div className="liveState liveError">
+              <strong>Cotes {tour} temporairement indisponibles</strong>
+              <span>
+                Les matchs sont bien détectés, mais aucune grille de cotes
+                exploitable n'est disponible dans le dernier snapshot. Ce n'est
+                pas un NO BET du modèle.
+              </span>
+            </div>
           ) : (
             <div className="liveState noBetState">
               <strong>NO BET {tour} pour l'instant</strong>
               <span>
-                Aucun match ne passe tous les critères. Le moteur ne force pas
-                de pari lorsqu'il ne trouve pas d'edge suffisamment propre.
+                Les données sont disponibles, mais aucun match ne passe tous les
+                critères. Le moteur ne force pas de pari sans edge suffisamment
+                propre.
               </span>
             </div>
           )}
 
           <p className="liveUpdated">
-            Calcul actualisé : {formatTime(data.generatedAt)} · Les probabilités
-            restent incertaines et ne garantissent aucun gain.
+            Calcul serveur : {formatTime(data.generatedAt)}
+            {data.snapshot
+              ? ` · snapshot ${Math.round(data.snapshot.ageMinutes)} min${data.snapshot.stale ? " · À RAFRAÎCHIR" : ""}`
+              : ""}
+            {" · "}Les probabilités restent incertaines et ne garantissent aucun gain.
           </p>
         </>
       ) : null}
