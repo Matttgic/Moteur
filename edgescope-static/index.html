@@ -96,14 +96,23 @@ async function loadHistory(open=true){
   const market=humanMarket(r.market_key||'');
   const bet=humanBet(r.selection||'',market);
   const when=r.detected_at?new Date(r.detected_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-  const book=bookName(r.bookmaker_key);
-  const odds=Number(r.offered_odds||0).toFixed(2);
-  const min=Number(r.fair_odds||0)>0?(Number(r.fair_odds)*1.025).toFixed(2):'—';
   const sr=r.settlement_result||'PENDING';
   const label=sr==='WIN'?'GAGNÉ':sr==='LOSE'?'PERDU':sr==='PUSH'?'REMBOURSÉ':sr==='HALFWIN'?'DEMI-GAGNÉ':sr==='HALFLOSS'?'DEMI-PERDU':sr==='CANCELLED'?'ANNULÉ':'EN ATTENTE';
   const klass=['WIN','HALFWIN'].includes(sr)?'resultWin':['LOSE','HALFLOSS'].includes(sr)?'resultLose':'resultPending';
-  const profit=r.unit_profit==null?'':((Number(r.unit_profit)*10)>=0?'+':'')+(Number(r.unit_profit)*10).toFixed(2)+' €';
-  return '<article class="historyBet"><div class="historyHead"><div class="betTitle">PARI DÉTECTÉ</div><span class="'+klass+'">'+label+'</span></div><div class="historyPick">'+bet+'</div><div class="historyOdds">@ '+odds+' chez '+book+'</div><div class="historyEvent">'+r.event_name+(when?' · '+when:'')+'</div><div class="betMeta"><span>Cote mini <b>'+min+'</b></span><span>Edge <b class="good">'+pc(r.edge)+'</b></span><span>Score <b>'+Number(r.confidence||0)+'/100</b></span>'+(profit?'<span>Profit test 10 € <b>'+profit+'</b></span>':'')+'</div></article>'
+  const executable=r.revalidation_status==='valid'&&Number(r.execution_odds)>1;
+  const execTag=executable?'<span class="signal">EXÉCUTABLE</span>':r.revalidation_status==='invalid'?'<span class="sportTag">VALUE DISPARUE</span>':'<span class="sportTag">ANCIEN SIGNAL</span>';
+  const detectedOdds=Number(r.offered_odds||0).toFixed(2);
+  const detectedBook=bookName(r.bookmaker_key);
+  const execLine=executable?'<div class="historyOdds">@ '+Number(r.execution_odds).toFixed(2)+' chez '+r.execution_bookmaker+' <span class="muted">· cote revérifiée</span></div><div class="muted small">Détection initiale : '+detectedOdds+' chez '+detectedBook+'</div>':'<div class="historyOdds">@ '+detectedOdds+' chez '+detectedBook+'</div>';
+  const min=Number(r.execution_min_odds||0)>0?Number(r.execution_min_odds).toFixed(2):(Number(r.fair_odds||0)>0?(Number(r.fair_odds)*1.025).toFixed(2):'—');
+  let pnl='';
+  if(executable&&['WIN','LOSE','HALFWIN','HALFLOSS','PUSH'].includes(sr)){
+   const o=Number(r.execution_odds),u=sr==='WIN'?o-1:sr==='LOSE'?-1:sr==='HALFWIN'?(o-1)/2:sr==='HALFLOSS'?-0.5:0;
+   pnl=(u*10>=0?'+':'')+(u*10).toFixed(2)+' €';
+  }else if(r.unit_profit!=null){pnl=((Number(r.unit_profit)*10)>=0?'+':'')+(Number(r.unit_profit)*10).toFixed(2)+' €'}
+  const clv=r.clv==null?'':('<span>CLV <b class="'+(Number(r.clv)>=0?'good':'bad')+'">'+(Number(r.clv)>=0?'+':'')+pc(r.clv)+'</b></span>');
+  const edge=executable&&r.execution_edge!=null?r.execution_edge:r.edge;
+  return '<article class="historyBet"><div class="historyHead"><div>'+execTag+'</div><span class="'+klass+'">'+label+'</span></div><div class="historyPick">'+bet+'</div>'+execLine+'<div class="historyEvent">'+r.event_name+(when?' · détecté '+when:'')+'</div><div class="betMeta"><span>Cote mini <b>'+min+'</b></span><span>Edge <b class="good">'+pc(edge)+'</b></span><span>Score <b>'+Number(r.confidence||0)+'/100</b></span>'+(pnl?'<span>P&L test 10 € <b>'+pnl+'</b></span>':'')+clv+'</div></article>'
  }).join('')||'<div class="card muted">Aucun historique.</div>'
 }
 async function loadPerf(){
