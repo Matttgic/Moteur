@@ -1,4 +1,5 @@
-import { getSupabaseServerClient } from "./supabase";
+const SNAPSHOT_EDGE_URL =
+  "https://uciolnhvddbindxajzti.supabase.co/functions/v1/tennis-selection-snapshots";
 
 export type SelectionTour = "ATP" | "WTA";
 
@@ -9,31 +10,60 @@ export type SelectionSnapshot = {
   updatedAt: string;
 };
 
-export async function getSelectionSnapshot(
+async function snapshotRequest(
+  action: "get" | "save",
   tour: SelectionTour,
-): Promise<SelectionSnapshot | null> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
+  payload?: Record<string, unknown>,
+) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
     throw new Error("selection_snapshot_store_not_configured");
   }
 
-  const { data, error } = await (supabase as any)
-    .from("tennis_selection_snapshots")
-    .select("tour,payload,generated_at,updated_at")
-    .eq("tour", tour)
-    .maybeSingle();
+  const response = await fetch(SNAPSHOT_EDGE_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({
+      action,
+      tour,
+      cronSecret,
+      ...(payload ? { payload } : {}),
+    }),
+  });
 
-  if (error) throw error;
-  if (!data) return null;
+  const body = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const detail =
+      body && typeof body === "object" && "error" in body
+        ? String(body.error)
+        : `http_${response.status}`;
+    throw new Error(`selection_snapshot_runtime_failed:${detail}`);
+  }
+
+  return body;
+}
+
+export async function getSelectionSnapshot(
+  tour: SelectionTour,
+): Promise<SelectionSnapshot | null> {
+  const body = await snapshotRequest("get", tour);
+  const snapshot = body?.snapshot;
+
+  if (!snapshot) return null;
 
   return {
-    tour: data.tour as SelectionTour,
+    tour: snapshot.tour as SelectionTour,
     payload:
-      data.payload && typeof data.payload === "object"
-        ? (data.payload as Record<string, unknown>)
+      snapshot.payload && typeof snapshot.payload === "object"
+        ? (snapshot.payload as Record<string, unknown>)
         : {},
-    generatedAt: String(data.generated_at),
-    updatedAt: String(data.updated_at),
+    generatedAt: String(snapshot.generatedAt),
+    updatedAt: String(snapshot.updatedAt),
   };
 }
 
@@ -41,30 +71,15 @@ export async function saveSelectionSnapshot(
   tour: SelectionTour,
   payload: Record<string, unknown>,
 ) {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    throw new Error("selection_snapshot_store_not_configured");
+  const body = await snapshotRequest("save", tour, payload);
+  const snapshot = body?.snapshot;
+
+  if (!snapshot) {
+    throw new Error("selection_snapshot_runtime_invalid_response");
   }
 
-  const generatedAt =
-    typeof payload.generatedAt === "string"
-      ? payload.generatedAt
-      : new Date().toISOString();
-  const updatedAt = new Date().toISOString();
-
-  const { error } = await (supabase as any)
-    .from("tennis_selection_snapshots")
-    .upsert(
-      {
-        tour,
-        payload,
-        generated_at: generatedAt,
-        updated_at: updatedAt,
-      },
-      { onConflict: "tour" },
-    );
-
-  if (error) throw error;
-
-  return { generatedAt, updatedAt };
+  return {
+    generatedAt: String(snapshot.generatedAt),
+    updatedAt: String(snapshot.updatedAt),
+  };
 }
