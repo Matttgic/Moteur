@@ -678,6 +678,14 @@ export async function GET(request: NextRequest) {
     const dataUnavailable =
       liveResult.model_eligible_matches > 0 &&
       oddsResult.fixtures.length === 0;
+    const oddsDiagnostics = oddsResult.providerDiagnostics as
+      | Record<string, unknown>
+      | undefined;
+    const fallbackDiagnostics =
+      oddsDiagnostics?.fallbackDiagnostics &&
+      typeof oddsDiagnostics.fallbackDiagnostics === "object"
+        ? (oddsDiagnostics.fallbackDiagnostics as Record<string, unknown>)
+        : null;
 
     const responsePayload = {
       generatedAt,
@@ -705,6 +713,15 @@ export async function GET(request: NextRequest) {
         oddsProvider: oddsResult.provider ?? "OddsPapi",
         oddsDiscoveryMode:
           oddsResult.providerDiagnostics?.discoveryMode ?? null,
+        fallbackConfigured: Boolean(oddsDiagnostics?.fallbackConfigured),
+        fallbackProvider:
+          typeof oddsDiagnostics?.fallbackProvider === "string"
+            ? oddsDiagnostics.fallbackProvider
+            : null,
+        fallbackDiscoveryMode:
+          typeof fallbackDiagnostics?.discoveryMode === "string"
+            ? fallbackDiagnostics.discoveryMode
+            : null,
         liveAccepted: liveResult.accepted_matches,
         liveModelEligible: liveResult.model_eligible_matches,
         oddsFixtures: oddsResult.fixtures.length,
