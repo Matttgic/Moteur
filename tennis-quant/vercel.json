@@ -3,11 +3,11 @@
   "crons": [
     {
       "path": "/api/cron/tennis-sync/atp",
-      "schedule": "5 3 * * *"
+      "schedule": "5 3,15,21 * * *"
     },
     {
       "path": "/api/cron/tennis-sync/wta",
-      "schedule": "25 3 * * *"
+      "schedule": "25 3,15,21 * * *"
     },
     {
       "path": "/api/cron/tennis-picks/atp",
@@ -19,7 +19,15 @@
     },
     {
       "path": "/api/cron/tennis-settle",
-      "schedule": "45 4 * * *"
+      "schedule": "45 4,16,22 * * *"
+    },
+    {
+      "path": "/api/cron/tennis-clv",
+      "schedule": "20 * * * *"
+    },
+    {
+      "path": "/api/cron/tennis-health",
+      "schedule": "50 5,17 * * *"
     }
   ]
 }
