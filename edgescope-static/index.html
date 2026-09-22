@@ -52,7 +52,7 @@ function timeText(mins){if(mins==null)return '';if(mins<0)return 'événement co
 async function call(action,options={}){const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');const res=await fetch(url,{method:options.method||'GET',headers:{'x-edgescope-pin':PIN,'content-type':'application/json'},body:options.body?JSON.stringify(options.body):undefined});if(res.status===401){logout();throw new Error('Code PIN invalide');}return res.json()}
 async function login(){return true}
 function logout(){location.reload()}
-function show(id){for(const x of ['scan','history','performance','settings'])document.getElementById(x).classList.toggle('hide',x!==id)}
+function show(id){for(const x of ['scan','history','performance','settings']){const el=document.getElementById(x);if(el)el.classList.toggle('hide',x!==id)}}
 async function doScan(){
  show('scan');scanBtn.disabled=true;status.textContent='Contrôle du moteur automatique…';
  try{
