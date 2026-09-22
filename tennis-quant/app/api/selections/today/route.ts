@@ -699,6 +699,8 @@ export async function GET(request: NextRequest) {
         ? Number(fallbackHttpStatusMatch[1])
         : null,
       fallbackErrorCode: fallbackCodeMatch?.[1] ?? null,
+      fallbackError:
+        typeof fallbackError === "string" ? fallbackError.slice(0, 500) : null,
     };
 
     const responsePayload = {
