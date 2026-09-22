@@ -3,6 +3,16 @@ const TENNIS_SPORT_ID = 12;
 const TENNIS_WINNER_MARKET_ID = 121;
 const TENNIS_WINNER_OUTCOME_1 = "121";
 const TENNIS_WINNER_OUTCOME_2 = "122";
+const THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4";
+
+const THE_ODDS_API_BOOKMAKERS: Record<string, string> = {
+  "winamax.fr": "winamax_fr",
+  "unibet.fr": "unibet_fr",
+  "betclic.fr": "betclic_fr",
+  "pmu": "pmu_fr",
+  "netbet.fr": "netbet_fr",
+  "pinnacle": "pinnacle",
+};
 
 export type TennisTour = "atp" | "wta";
 
@@ -10,6 +20,9 @@ export const FRENCH_EXECUTION_BOOKMAKERS = [
   "bet365.fr",
   "winamax.fr",
   "unibet.fr",
+  "betclic.fr",
+  "pmu",
+  "netbet.fr",
   "bwin.fr",
   "zebet.fr",
 ] as const;
@@ -64,6 +77,41 @@ type OddsTournament = {
   futureFixtures?: number;
   upcomingFixtures?: number;
   liveFixtures?: number;
+};
+
+type TheOddsSport = {
+  key?: string;
+  group?: string;
+  title?: string;
+  active?: boolean;
+};
+
+type TheOddsOutcome = {
+  name?: string;
+  price?: number;
+};
+
+type TheOddsMarket = {
+  key?: string;
+  last_update?: string;
+  outcomes?: TheOddsOutcome[];
+};
+
+type TheOddsBookmaker = {
+  key?: string;
+  title?: string;
+  last_update?: string;
+  markets?: TheOddsMarket[];
+};
+
+type TheOddsEvent = {
+  id?: string;
+  sport_key?: string;
+  sport_title?: string;
+  commence_time?: string;
+  home_team?: string;
+  away_team?: string;
+  bookmakers?: TheOddsBookmaker[];
 };
 
 const EXCLUDED_TENNIS =
@@ -303,6 +351,313 @@ function isHttpStatus(error: unknown, status: number) {
   );
 }
 
+async function theOddsApi<T>(
+  apiKey: string,
+  path: string,
+  params: Record<string, string>,
+  revalidate = 900,
+): Promise<{ payload: T; quota: { remaining: string | null; used: string | null; last: string | null } }> {
+  const url = new URL(`${THE_ODDS_API_BASE}/${path}`);
+  url.searchParams.set("apiKey", apiKey);
+
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+
+  const response = await fetch(url, {
+    headers: { Accept: "application/json" },
+    next: { revalidate },
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const detail =
+      payload && typeof payload === "object"
+        ? JSON.stringify(payload).slice(0, 800)
+        : String(payload ?? "");
+
+    const error = new Error(
+      `The Odds API ${path} failed with HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
+    );
+    Object.assign(error, { status: response.status, payload });
+    throw error;
+  }
+
+  return {
+    payload: payload as T,
+    quota: {
+      remaining: response.headers.get("x-requests-remaining"),
+      used: response.headers.get("x-requests-used"),
+      last: response.headers.get("x-requests-last"),
+    },
+  };
+}
+
+function theOddsWinner(
+  event: TheOddsEvent,
+  canonicalBookmaker: string,
+) {
+  const providerBookmaker = THE_ODDS_API_BOOKMAKERS[canonicalBookmaker];
+  if (!providerBookmaker) return null;
+
+  const bookmaker = event.bookmakers?.find(
+    (candidate) => candidate.key === providerBookmaker,
+  );
+  const market = bookmaker?.markets?.find((candidate) => candidate.key === "h2h");
+  if (!market || !event.home_team || !event.away_team) return null;
+
+  const outcome1 = market.outcomes?.find(
+    (outcome) => outcome.name === event.home_team,
+  );
+  const outcome2 = market.outcomes?.find(
+    (outcome) => outcome.name === event.away_team,
+  );
+  const odds1 = Number(outcome1?.price);
+  const odds2 = Number(outcome2?.price);
+
+  if (
+    !Number.isFinite(odds1) ||
+    !Number.isFinite(odds2) ||
+    odds1 <= 1 ||
+    odds2 <= 1
+  ) {
+    return null;
+  }
+
+  const inv1 = 1 / odds1;
+  const inv2 = 1 / odds2;
+  const total = inv1 + inv2;
+  const changedAt = market.last_update ?? bookmaker?.last_update ?? null;
+
+  return {
+    marketId: TENNIS_WINNER_MARKET_ID,
+    marketName: "Winner",
+    outcome1Id: Number(TENNIS_WINNER_OUTCOME_1),
+    outcome2Id: Number(TENNIS_WINNER_OUTCOME_2),
+    odds1,
+    odds2,
+    noVigProbability1: inv1 / total,
+    noVigProbability2: inv2 / total,
+    overround: total - 1,
+    changedAt1: changedAt,
+    changedAt2: changedAt,
+  };
+}
+
+async function getTheOddsApiTennisOdds(
+  apiKey: string,
+  tour: TennisTour,
+  bookmakers: string[],
+  window: ReturnType<typeof boardWindow>,
+) {
+  const sportsResponse = await theOddsApi<TheOddsSport[]>(
+    apiKey,
+    "sports",
+    {},
+    3600,
+  );
+
+  const prefix = tour === "atp" ? "tennis_atp_" : "tennis_wta_";
+  const sports = (Array.isArray(sportsResponse.payload)
+    ? sportsResponse.payload
+    : []
+  )
+    .filter(
+      (sport) =>
+        sport.active !== false &&
+        sport.group?.toLowerCase() === "tennis" &&
+        typeof sport.key === "string" &&
+        sport.key.startsWith(prefix),
+    )
+    .slice(0, 8);
+
+  if (!sports.length) {
+    return {
+      provider: "The Odds API" as const,
+      tour: tour.toUpperCase(),
+      tournamentCount: 0,
+      discoveredFixtures: 0,
+      tournaments: [],
+      bookmakers,
+      moneylineMarketCandidates: [
+        { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
+      ],
+      requestWindow: { from: window.from, to: window.to },
+      providerDiagnostics: {
+        discoveryMode: "the_odds_api_no_active_sports",
+        fallbackConfigured: true,
+        activeSports: 0,
+        oddsRequests: 0,
+        quota: sportsResponse.quota,
+      },
+      fixtures: [],
+    };
+  }
+
+  const supportedCanonicalBooks = bookmakers.filter(
+    (bookmaker) => Boolean(THE_ODDS_API_BOOKMAKERS[bookmaker]),
+  );
+  const providerBookmakers = Array.from(
+    new Set(
+      supportedCanonicalBooks
+        .map((bookmaker) => THE_ODDS_API_BOOKMAKERS[bookmaker])
+        .filter(Boolean),
+    ),
+  );
+
+  if (!providerBookmakers.length) {
+    return {
+      provider: "The Odds API" as const,
+      tour: tour.toUpperCase(),
+      tournamentCount: sports.length,
+      discoveredFixtures: 0,
+      tournaments: sports.map((sport) => ({
+        tournamentId: null,
+        tournamentName: sport.title ?? sport.key ?? null,
+        categoryName: tour.toUpperCase(),
+      })),
+      bookmakers,
+      moneylineMarketCandidates: [
+        { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
+      ],
+      requestWindow: { from: window.from, to: window.to },
+      providerDiagnostics: {
+        discoveryMode: "the_odds_api",
+        fallbackConfigured: true,
+        activeSports: sports.length,
+        oddsRequests: 0,
+        supportedBookmakers: 0,
+        quota: sportsResponse.quota,
+      },
+      fixtures: [],
+    };
+  }
+
+  const events: TheOddsEvent[] = [];
+  let quota = sportsResponse.quota;
+  let requests = 0;
+
+  for (const sport of sports) {
+    if (!sport.key) continue;
+
+    const response = await theOddsApi<TheOddsEvent[]>(
+      apiKey,
+      `sports/${sport.key}/odds`,
+      {
+        bookmakers: providerBookmakers.join(","),
+        markets: "h2h",
+        oddsFormat: "decimal",
+        dateFormat: "iso",
+        commenceTimeFrom: window.from,
+        commenceTimeTo: window.to,
+      },
+      900,
+    );
+
+    requests += 1;
+    quota = response.quota;
+
+    if (Array.isArray(response.payload)) {
+      events.push(...response.payload);
+    }
+  }
+
+  const fixtures = events
+    .filter(
+      (event) =>
+        typeof event.id === "string" &&
+        typeof event.home_team === "string" &&
+        typeof event.away_team === "string" &&
+        typeof event.commence_time === "string" &&
+        Number.isFinite(Date.parse(event.commence_time)) &&
+        Date.parse(event.commence_time) >= window.fromMs &&
+        Date.parse(event.commence_time) <= window.toMs,
+    )
+    .map((event) => {
+      const prices = Object.fromEntries(
+        bookmakers.map((bookmaker) => [
+          bookmaker,
+          theOddsWinner(event, bookmaker),
+        ]),
+      );
+
+      return {
+        fixtureId: `toa:${event.id}`,
+        tournamentId: null,
+        tournamentName: event.sport_title ?? event.sport_key ?? null,
+        categoryName: tour.toUpperCase(),
+        startTime: event.commence_time ?? null,
+        participant1Id: null,
+        participant2Id: null,
+        participant1Name: event.home_team ?? null,
+        participant2Name: event.away_team ?? null,
+        hasOdds: true,
+        prices,
+      };
+    })
+    .filter((fixture) => Object.values(fixture.prices).some(Boolean));
+
+  return {
+    provider: "The Odds API" as const,
+    tour: tour.toUpperCase(),
+    tournamentCount: sports.length,
+    discoveredFixtures: events.length,
+    tournaments: sports.map((sport) => ({
+      tournamentId: null,
+      tournamentName: sport.title ?? sport.key ?? null,
+      categoryName: tour.toUpperCase(),
+    })),
+    bookmakers,
+    moneylineMarketCandidates: [
+      { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
+    ],
+    requestWindow: { from: window.from, to: window.to },
+    providerDiagnostics: {
+      discoveryMode: "the_odds_api",
+      fallbackConfigured: true,
+      activeSports: sports.length,
+      oddsRequests: requests,
+      quota,
+    },
+    fixtures,
+  };
+}
+
+async function maybeTheOddsApiFallback(
+  tour: TennisTour,
+  bookmakers: string[],
+  window: ReturnType<typeof boardWindow>,
+) {
+  const apiKey = process.env.THE_ODDS_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    return await getTheOddsApiTennisOdds(apiKey, tour, bookmakers, window);
+  } catch (error) {
+    return {
+      provider: "The Odds API" as const,
+      tour: tour.toUpperCase(),
+      tournamentCount: 0,
+      discoveredFixtures: 0,
+      tournaments: [],
+      bookmakers,
+      moneylineMarketCandidates: [
+        { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
+      ],
+      requestWindow: { from: window.from, to: window.to },
+      providerDiagnostics: {
+        discoveryMode: "the_odds_api_error",
+        fallbackConfigured: true,
+        fallbackError:
+          error instanceof Error ? error.message : "unknown_fallback_error",
+        oddsRequests: 0,
+      },
+      fixtures: [],
+    };
+  }
+}
+
 export async function getTennisOdds(
   apiKey: string,
   tour: TennisTour,
@@ -407,7 +762,11 @@ export async function getTennisOdds(
   }
 
   if (!tournamentMap.size) {
+    const fallback = await maybeTheOddsApiFallback(tour, bookmakers, window);
+    if (fallback?.fixtures.length) return fallback;
+
     return {
+      provider: "OddsPapi" as const,
       tour: tour.toUpperCase(),
       tournamentCount: 0,
       discoveredFixtures: 0,
@@ -420,6 +779,9 @@ export async function getTennisOdds(
       providerDiagnostics: {
         discoveryMode,
         fallbackTournamentCount,
+        fallbackConfigured: Boolean(process.env.THE_ODDS_API_KEY),
+        fallbackProvider: fallback?.provider ?? null,
+        fallbackDiagnostics: fallback?.providerDiagnostics ?? null,
         oddsRequests: 0,
         emptyBookmakerQueries: 0,
       },
@@ -525,7 +887,8 @@ export async function getTennisOdds(
     })
     .filter((fixture) => Object.values(fixture.prices).some(Boolean));
 
-  return {
+  const primaryResult = {
+    provider: "OddsPapi" as const,
     tour: tour.toUpperCase(),
     tournamentCount: tournamentMap.size,
     discoveredFixtures: boardFixtures.length || fixtures.length,
@@ -539,9 +902,24 @@ export async function getTennisOdds(
       discoveryMode,
       fallbackTournamentCount,
       boardDiscoveredFixtures: boardFixtures.length,
+      fallbackConfigured: Boolean(process.env.THE_ODDS_API_KEY),
       oddsRequests: requests,
       emptyBookmakerQueries,
     },
     fixtures,
+  };
+
+  if (fixtures.length) return primaryResult;
+
+  const fallback = await maybeTheOddsApiFallback(tour, bookmakers, window);
+  if (fallback?.fixtures.length) return fallback;
+
+  return {
+    ...primaryResult,
+    providerDiagnostics: {
+      ...primaryResult.providerDiagnostics,
+      fallbackProvider: fallback?.provider ?? null,
+      fallbackDiagnostics: fallback?.providerDiagnostics ?? null,
+    },
   };
 }

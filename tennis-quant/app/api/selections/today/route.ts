@@ -619,6 +619,9 @@ export async function GET(request: NextRequest) {
       economicTracking,
       shadowTracking,
       sourceSummary: {
+        oddsProvider: oddsResult.provider ?? "OddsPapi",
+        oddsDiscoveryMode:
+          oddsResult.providerDiagnostics?.discoveryMode ?? null,
         liveAccepted: liveResult.accepted_matches,
         liveModelEligible: liveResult.model_eligible_matches,
         oddsFixtures: oddsResult.fixtures.length,
