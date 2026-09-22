@@ -461,18 +461,17 @@ async function getTheOddsApiTennisOdds(
   );
 
   const prefix = tour === "atp" ? "tennis_atp_" : "tennis_wta_";
-  const sports = (Array.isArray(sportsResponse.payload)
+  const activeSports = (Array.isArray(sportsResponse.payload)
     ? sportsResponse.payload
     : []
-  )
-    .filter(
-      (sport) =>
-        sport.active !== false &&
-        sport.group?.toLowerCase() === "tennis" &&
-        typeof sport.key === "string" &&
-        sport.key.startsWith(prefix),
-    )
-    .slice(0, 8);
+  ).filter(
+    (sport) =>
+      sport.active !== false &&
+      sport.group?.toLowerCase() === "tennis" &&
+      typeof sport.key === "string" &&
+      sport.key.startsWith(prefix),
+  );
+  const sports = activeSports.slice(0, 8);
 
   if (!sports.length) {
     return {
@@ -490,6 +489,7 @@ async function getTheOddsApiTennisOdds(
         discoveryMode: "the_odds_api_no_active_sports",
         fallbackConfigured: true,
         activeSports: 0,
+        activeSportsAvailable: 0,
         oddsRequests: 0,
         quota: sportsResponse.quota,
       },
@@ -528,6 +528,7 @@ async function getTheOddsApiTennisOdds(
         discoveryMode: "the_odds_api",
         fallbackConfigured: true,
         activeSports: sports.length,
+        activeSportsAvailable: activeSports.length,
         oddsRequests: 0,
         supportedBookmakers: 0,
         quota: sportsResponse.quota,
@@ -619,6 +620,7 @@ async function getTheOddsApiTennisOdds(
       discoveryMode: "the_odds_api",
       fallbackConfigured: true,
       activeSports: sports.length,
+      activeSportsAvailable: activeSports.length,
       oddsRequests: requests,
       quota,
     },
