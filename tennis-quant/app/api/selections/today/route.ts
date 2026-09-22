@@ -686,6 +686,20 @@ export async function GET(request: NextRequest) {
       typeof oddsDiagnostics.fallbackDiagnostics === "object"
         ? (oddsDiagnostics.fallbackDiagnostics as Record<string, unknown>)
         : null;
+    const fallbackError =
+      typeof fallbackDiagnostics?.fallbackError === "string"
+        ? fallbackDiagnostics.fallbackError
+        : null;
+    const fallbackHttpStatusMatch = fallbackError?.match(/HTTP\\s+(\\d{3})/);
+    const fallbackCodeMatch = fallbackError?.match(
+      /"(?:error_code|code)"\\s*:\\s*"([A-Z0-9_]+)"/,
+    );
+    const internalDiagnostics = {
+      fallbackHttpStatus: fallbackHttpStatusMatch
+        ? Number(fallbackHttpStatusMatch[1])
+        : null,
+      fallbackErrorCode: fallbackCodeMatch?.[1] ?? null,
+    };
 
     const responsePayload = {
       generatedAt,
@@ -738,6 +752,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ...responsePayload,
+      internalDiagnostics,
       snapshot: {
         mode: "fresh_private_refresh",
         generatedAt,
