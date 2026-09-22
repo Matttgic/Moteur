@@ -1,7 +1,10 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getUpcomingTourFixtures } from "@/lib/live-tennis";
-import { getTennisOdds } from "@/lib/oddspapi";
+import {
+  FRENCH_EXECUTION_BOOKMAKERS,
+  getTennisOdds,
+} from "@/lib/oddspapi";
 import { heartbeat } from "@/lib/ops";
 
 export const runtime = "nodejs";
@@ -57,9 +60,11 @@ export async function GET(request: NextRequest) {
 
   for (const tour of ["atp", "wta"] as const) {
     const upper = tour.toUpperCase() as "ATP" | "WTA";
+    let liveAccepted = 0;
 
     try {
       const live = await getUpcomingTourFixtures(liveKey, tour);
+      liveAccepted = live.accepted_matches;
       results[`live_${tour}`] = {
         ok: true,
         accepted: live.accepted_matches,
@@ -85,17 +90,29 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const odds = await getTennisOdds(oddsKey, tour, ["bet365.fr"]);
+      const odds = await getTennisOdds(
+        oddsKey,
+        tour,
+        [...FRENCH_EXECUTION_BOOKMAKERS],
+      );
+      const pricedFixtures = odds.fixtures.length;
+      const healthy = liveAccepted === 0 || pricedFixtures > 0;
+
       results[`odds_${tour}`] = {
-        ok: true,
+        ok: healthy,
         discoveredFixtures: odds.discoveredFixtures ?? 0,
-        pricedFixtures: odds.fixtures.length,
+        pricedFixtures,
+        discoveryMode: odds.providerDiagnostics?.discoveryMode ?? null,
+        reason:
+          healthy
+            ? null
+            : "live_fixtures_but_no_french_odds_board",
       };
 
       await heartbeat({
         jobName: "provider-health-odds",
         tour: upper,
-        status: "success",
+        status: healthy ? "success" : "failed",
         details: results[`odds_${tour}`] as Record<string, unknown>,
       });
     } catch (error) {
