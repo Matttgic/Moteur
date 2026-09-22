@@ -313,7 +313,7 @@ function boardWindow() {
       0,
     ),
   );
-  const to = new Date(from.getTime() + 47 * 60 * 60 * 1000 + 59 * 60 * 1000);
+  const to = new Date(from.getTime() + 71 * 60 * 60 * 1000 + 59 * 60 * 1000);
 
   return {
     from: from.toISOString(),
@@ -447,11 +447,49 @@ function theOddsWinner(
   };
 }
 
+function normalizeTournamentHint(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function sportHintScore(sport: TheOddsSport, tournamentHints: string[]) {
+  if (!tournamentHints.length) return 0;
+
+  const sportText = normalizeTournamentHint(
+    [sport.key, sport.title].filter(Boolean).join(" "),
+  );
+
+  let best = 0;
+  for (const rawHint of tournamentHints) {
+    const tokens = normalizeTournamentHint(rawHint)
+      .split(" ")
+      .filter(
+        (token) =>
+          token.length >= 3 &&
+          !["wta", "atp", "open", "tennis", "women", "men"].includes(token),
+      );
+
+    const score = tokens.reduce(
+      (sum, token) => sum + (sportText.includes(token) ? 1 : 0),
+      0,
+    );
+    best = Math.max(best, score);
+  }
+
+  return best;
+}
+
 async function getTheOddsApiTennisOdds(
   apiKey: string,
   tour: TennisTour,
   bookmakers: string[],
   window: ReturnType<typeof boardWindow>,
+  tournamentHints: string[],
 ) {
   const sportsResponse = await theOddsApi<TheOddsSport[]>(
     apiKey,
@@ -471,7 +509,12 @@ async function getTheOddsApiTennisOdds(
       typeof sport.key === "string" &&
       sport.key.startsWith(prefix),
   );
-  const sports = activeSports.slice(0, 8);
+  const sports = [...activeSports]
+    .sort(
+      (a, b) =>
+        sportHintScore(b, tournamentHints) - sportHintScore(a, tournamentHints),
+    )
+    .slice(0, 8);
 
   if (!sports.length) {
     return {
@@ -632,12 +675,19 @@ async function maybeTheOddsApiFallback(
   tour: TennisTour,
   bookmakers: string[],
   window: ReturnType<typeof boardWindow>,
+  tournamentHints: string[],
 ) {
   const apiKey = process.env.THE_ODDS_API_KEY;
   if (!apiKey) return null;
 
   try {
-    return await getTheOddsApiTennisOdds(apiKey, tour, bookmakers, window);
+    return await getTheOddsApiTennisOdds(
+      apiKey,
+      tour,
+      bookmakers,
+      window,
+      tournamentHints,
+    );
   } catch (error) {
     return {
       provider: "The Odds API" as const,
@@ -666,6 +716,7 @@ export async function getTennisOdds(
   apiKey: string,
   tour: TennisTour,
   bookmakers = [...FRENCH_EXECUTION_BOOKMAKERS, "pinnacle"],
+  tournamentHints: string[] = [],
 ) {
   const window = boardWindow();
 
@@ -766,7 +817,7 @@ export async function getTennisOdds(
   }
 
   if (!tournamentMap.size) {
-    const fallback = await maybeTheOddsApiFallback(tour, bookmakers, window);
+    const fallback = await maybeTheOddsApiFallback(tour, bookmakers, window, tournamentHints);
     if (fallback?.fixtures.length) return fallback;
 
     return {
@@ -915,7 +966,7 @@ export async function getTennisOdds(
 
   if (fixtures.length) return primaryResult;
 
-  const fallback = await maybeTheOddsApiFallback(tour, bookmakers, window);
+  const fallback = await maybeTheOddsApiFallback(tour, bookmakers, window, tournamentHints);
   if (fallback?.fixtures.length) return fallback;
 
   return {
