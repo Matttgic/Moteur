@@ -55,6 +55,17 @@ type OddsFixture = {
   bookmakerOdds?: Record<string, BookmakerNode>;
 };
 
+type OddsTournament = {
+  tournamentId?: number;
+  tournamentSlug?: string;
+  tournamentName?: string;
+  categorySlug?: string;
+  categoryName?: string;
+  futureFixtures?: number;
+  upcomingFixtures?: number;
+  liveFixtures?: number;
+};
+
 const EXCLUDED_TENNIS =
   /challenger|itf|utr|junior|doubles?|davis cup|billie jean king|bjk cup|laver cup|hopman cup|united cup|exhibition/i;
 
@@ -141,6 +152,48 @@ function normalizeFixturePayload(payload: unknown): OddsFixture[] {
   }
 
   return [];
+}
+
+function normalizeTournamentPayload(payload: unknown): OddsTournament[] {
+  if (Array.isArray(payload)) return payload as OddsTournament[];
+
+  if (payload && typeof payload === "object") {
+    const row = payload as Record<string, unknown>;
+    if (Array.isArray(row.data)) return row.data as OddsTournament[];
+  }
+
+  return [];
+}
+
+function isTargetTourTournament(
+  tournament: OddsTournament,
+  tour: TennisTour,
+) {
+  const text = [
+    tournament.tournamentName,
+    tournament.tournamentSlug,
+    tournament.categoryName,
+    tournament.categorySlug,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (EXCLUDED_TENNIS.test(text)) return false;
+
+  if (tour === "atp") {
+    if (/\bwta\b|women singles|women's singles/.test(text)) return false;
+    return (
+      /\batp\b|men singles|men's singles/.test(text) ||
+      GRAND_SLAM.test(text)
+    );
+  }
+
+  if (/\batp\b|men singles|men's singles/.test(text)) return false;
+  return (
+    /\bwta\b|women singles|women's singles/.test(text) ||
+    GRAND_SLAM.test(text)
+  );
 }
 
 function activePrice(outcome: OddsOutcome | undefined) {
@@ -305,17 +358,71 @@ export async function getTennisOdds(
       .filter((value): value is string => typeof value === "string"),
   );
 
+  let discoveryMode: "fixtures" | "tournaments_fallback" | "none" =
+    tournamentMap.size ? "fixtures" : "none";
+  let fallbackTournamentCount = 0;
+
+  // Some tennis tours can be missing from the generic fixtures discovery
+  // while still being present in the provider tournament catalog. The
+  // provider docs recommend tournament discovery before odds-by-tournaments,
+  // so use it as a conservative fallback instead of treating the tour as empty.
+  if (!tournamentMap.size) {
+    const tournamentPayload = await oddsApi<unknown>(
+      apiKey,
+      "tournaments",
+      {
+        sportId: String(TENNIS_SPORT_ID),
+        language: "en",
+      },
+      21_600,
+    );
+
+    const fallbackTournaments = normalizeTournamentPayload(tournamentPayload)
+      .filter((tournament) => {
+        const activeFixtures =
+          Number(tournament.futureFixtures ?? 0) +
+          Number(tournament.upcomingFixtures ?? 0) +
+          Number(tournament.liveFixtures ?? 0);
+
+        return (
+          activeFixtures > 0 &&
+          isTargetTourTournament(tournament, tour)
+        );
+      });
+
+    for (const tournament of fallbackTournaments) {
+      if (typeof tournament.tournamentId !== "number") continue;
+
+      tournamentMap.set(tournament.tournamentId, {
+        tournamentId: tournament.tournamentId,
+        tournamentName: tournament.tournamentName ?? null,
+        categoryName: tournament.categoryName ?? null,
+      });
+    }
+
+    fallbackTournamentCount = tournamentMap.size;
+    if (tournamentMap.size) {
+      discoveryMode = "tournaments_fallback";
+    }
+  }
+
   if (!tournamentMap.size) {
     return {
       tour: tour.toUpperCase(),
       tournamentCount: 0,
-      discoveredFixtures: boardFixtures.length,
+      discoveredFixtures: 0,
       tournaments: [],
       bookmakers,
       moneylineMarketCandidates: [
         { marketId: TENNIS_WINNER_MARKET_ID, marketName: "Winner" },
       ],
       requestWindow: { from: window.from, to: window.to },
+      providerDiagnostics: {
+        discoveryMode,
+        fallbackTournamentCount,
+        oddsRequests: 0,
+        emptyBookmakerQueries: 0,
+      },
       fixtures: [],
     };
   }
@@ -388,7 +495,10 @@ export async function getTennisOdds(
     .filter(
       (fixture) =>
         typeof fixture.fixtureId === "string" &&
-        fixtureIds.has(fixture.fixtureId) &&
+        typeof fixture.tournamentId === "number" &&
+        tournamentMap.has(fixture.tournamentId) &&
+        (fixtureIds.size === 0 || fixtureIds.has(fixture.fixtureId)) &&
+        (fixture.statusId == null || fixture.statusId === 0) &&
         withinWindow(fixture, window),
     )
     .map((fixture) => {
@@ -418,7 +528,7 @@ export async function getTennisOdds(
   return {
     tour: tour.toUpperCase(),
     tournamentCount: tournamentMap.size,
-    discoveredFixtures: boardFixtures.length,
+    discoveredFixtures: boardFixtures.length || fixtures.length,
     tournaments: Array.from(tournamentMap.values()),
     bookmakers,
     moneylineMarketCandidates: [
@@ -426,6 +536,9 @@ export async function getTennisOdds(
     ],
     requestWindow: { from: window.from, to: window.to },
     providerDiagnostics: {
+      discoveryMode,
+      fallbackTournamentCount,
+      boardDiscoveredFixtures: boardFixtures.length,
       oddsRequests: requests,
       emptyBookmakerQueries,
     },
