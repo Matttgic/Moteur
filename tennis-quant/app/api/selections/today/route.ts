@@ -59,9 +59,29 @@ function looseName(value: string) {
   return `${last}:${firstInitial}`;
 }
 
+function tokenOrderName(value: string) {
+  return canonicalExternalName(value)
+    .split(" ")
+    .filter(Boolean)
+    .sort()
+    .join(" ");
+}
+
+function equivalentPlayerName(a: string, b: string) {
+  return (
+    canonicalExternalName(a) === canonicalExternalName(b) ||
+    tokenOrderName(a) === tokenOrderName(b) ||
+    looseName(a) === looseName(b)
+  );
+}
+
 function pairKey(a: string, b: string, loose = false) {
   const fn = loose ? looseName : canonicalExternalName;
   return [fn(a), fn(b)].sort().join("|");
+}
+
+function tokenOrderPairKey(a: string, b: string) {
+  return [tokenOrderName(a), tokenOrderName(b)].sort().join("|");
 }
 
 function timeDistanceMs(a?: string | null, b?: string | null) {
@@ -83,21 +103,35 @@ function findOddsFixture(
   if (!p1 || !p2) return null;
 
   const exactKey = pairKey(p1, p2);
+  const tokenKey = tokenOrderPairKey(p1, p2);
   const looseKey = pairKey(p1, p2, true);
 
   const candidates = oddsFixtures
-    .filter((fixture) => {
-      if (!fixture.participant1Name || !fixture.participant2Name) return false;
-      return (
-        pairKey(fixture.participant1Name, fixture.participant2Name) === exactKey ||
-        pairKey(fixture.participant1Name, fixture.participant2Name, true) === looseKey
-      );
+    .flatMap((fixture) => {
+      if (!fixture.participant1Name || !fixture.participant2Name) return [];
+
+      const exact =
+        pairKey(fixture.participant1Name, fixture.participant2Name) === exactKey;
+      const tokenOrder =
+        tokenOrderPairKey(fixture.participant1Name, fixture.participant2Name) ===
+        tokenKey;
+      const loose =
+        pairKey(fixture.participant1Name, fixture.participant2Name, true) ===
+        looseKey;
+
+      if (!exact && !tokenOrder && !loose) return [];
+
+      return [{
+        fixture,
+        matchScore: exact ? 0 : tokenOrder ? 1 : 2,
+        distance: timeDistanceMs(live.scheduled_time, fixture.startTime),
+      }];
     })
-    .map((fixture) => ({
-      fixture,
-      distance: timeDistanceMs(live.scheduled_time, fixture.startTime),
-    }))
-    .sort((a, b) => a.distance - b.distance);
+    .sort(
+      (a, b) =>
+        a.matchScore - b.matchScore ||
+        a.distance - b.distance,
+    );
 
   const best = candidates[0];
   if (!best || best.distance > 36 * 60 * 60 * 1000) return null;
@@ -116,20 +150,13 @@ function alignQuote(
   if (!p1 || !p2 || !quote) return null;
   if (!oddsFixture.participant1Name || !oddsFixture.participant2Name) return null;
 
-  const live1 = canonicalExternalName(p1);
-  const live2 = canonicalExternalName(p2);
-  const odds1 = canonicalExternalName(oddsFixture.participant1Name);
-  const odds2 = canonicalExternalName(oddsFixture.participant2Name);
-
   const direct =
-    (live1 === odds1 && live2 === odds2) ||
-    (looseName(p1) === looseName(oddsFixture.participant1Name) &&
-      looseName(p2) === looseName(oddsFixture.participant2Name));
+    equivalentPlayerName(p1, oddsFixture.participant1Name) &&
+    equivalentPlayerName(p2, oddsFixture.participant2Name);
 
   const reverse =
-    (live1 === odds2 && live2 === odds1) ||
-    (looseName(p1) === looseName(oddsFixture.participant2Name) &&
-      looseName(p2) === looseName(oddsFixture.participant1Name));
+    equivalentPlayerName(p1, oddsFixture.participant2Name) &&
+    equivalentPlayerName(p2, oddsFixture.participant1Name);
 
   if (!direct && !reverse) return null;
 
@@ -350,6 +377,7 @@ export async function GET(request: NextRequest) {
 
     const analyzed = [];
     const rejected = [];
+    const matchedOddsFixtureIds = new Set<string>();
 
     for (const live of liveResult.data) {
       const p1 = live.players?.p1;
@@ -382,9 +410,15 @@ export async function GET(request: NextRequest) {
           matchId: live.id ?? null,
           playerA: p1.name,
           playerB: p2.name,
+          tournament: live.tournament ?? null,
+          scheduledTime: live.scheduled_time ?? null,
           reason: "odds_match_not_found",
         });
         continue;
+      }
+
+      if (typeof oddsFixture.fixtureId === "string") {
+        matchedOddsFixtureIds.add(oddsFixture.fixtureId);
       }
 
       const stateA = states.get(normalizePlayerName(p1.name)) ?? null;
@@ -675,6 +709,13 @@ export async function GET(request: NextRequest) {
     }
 
     const generatedAt = new Date().toISOString();
+    const unmatchedOddsFixtures = oddsResult.fixtures.filter(
+      (fixture) =>
+        typeof fixture.fixtureId !== "string" ||
+        !matchedOddsFixtureIds.has(fixture.fixtureId),
+    ).length;
+    const matchedOddsFixtures =
+      oddsResult.fixtures.length - unmatchedOddsFixtures;
     const dataUnavailable =
       liveResult.model_eligible_matches > 0 &&
       oddsResult.fixtures.length === 0;
@@ -740,7 +781,14 @@ export async function GET(request: NextRequest) {
             : null,
         liveAccepted: liveResult.accepted_matches,
         liveModelEligible: liveResult.model_eligible_matches,
+        providerDiscoveredFixtures: oddsResult.discoveredFixtures,
         oddsFixtures: oddsResult.fixtures.length,
+        matchedOddsFixtures,
+        unmatchedOddsFixtures,
+        oddsCoverageRatio:
+          liveResult.model_eligible_matches > 0
+            ? matchedOddsFixtures / liveResult.model_eligible_matches
+            : null,
         analyzed: analyzed.length,
         rejected: rejected.length,
       },
