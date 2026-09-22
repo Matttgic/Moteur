@@ -29,5 +29,8 @@
       "path": "/api/cron/tennis-health",
       "schedule": "50 17 * * *"
     }
+  ],
+  "regions": [
+    "fra1"
   ]
 }
