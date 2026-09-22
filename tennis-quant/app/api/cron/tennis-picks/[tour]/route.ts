@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { heartbeat } from "@/lib/ops";
+import { isCronAuthorized } from "@/lib/cron-auth";\nimport { heartbeat } from "@/lib/ops";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -8,11 +8,13 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ tour: string }> },
 ) {
-  const cronSecret = process.env.CRON_SECRET;
-  const authorization = request.headers.get("authorization");
-
-  if (!cronSecret || authorization !== `Bearer ${cronSecret}`) {
+  if (!isCronAuthorized(request)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    return NextResponse.json({ error: "CRON_SECRET_missing" }, { status: 503 });
   }
 
   const { tour: rawTour } = await context.params;
