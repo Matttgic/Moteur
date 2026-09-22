@@ -31,6 +31,7 @@
       <div class="card"><b>Tous les sports</b><div class="muted">Détection automatique des sports actifs sur les prochaines 24 h.</div></div>
       <button id="scanBtn" class="btn primary" onclick="doScan()">Scanner tous les sports</button>
     </div>
+    <div id="autoStatusCard" class="card status"><b>Scan automatique</b><div class="muted">Chargement de l’état…</div></div>
     <div class="grid">
       <div class="card metric"><span class="muted">Opportunités</span><b id="n">—</b></div>
       <div class="card metric"><span class="muted">Sports couverts</span><b id="sports">—</b></div>
@@ -57,7 +58,7 @@ function bookName(k=''){const m={'pmu':'PMU','winamax.fr':'Winamax','unibet.fr':
 function safeId(v=''){return String(v).replace(/[^a-zA-Z0-9_-]/g,'_')}
 function timeText(mins){if(mins==null)return '';if(mins<0)return 'événement commencé';if(mins<60)return 'dans '+mins+' min';const h=Math.floor(mins/60),m=mins%60;return 'dans '+h+'h'+String(m).padStart(2,'0')}
 async function call(action,options={}){const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');const res=await fetch(url,{method:options.method||'GET',headers:{'x-edgescope-pin':PIN,'content-type':'application/json'},body:options.body?JSON.stringify(options.body):undefined});if(res.status===401){logout();throw new Error('Code PIN invalide');}return res.json()}
-async function login(){PIN=document.getElementById('pin').value.trim();try{await call('settings');localStorage.setItem('edgescope_pin',PIN);document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings();show('scan')}catch(e){document.getElementById('loginMsg').textContent='Code PIN incorrect.'}}
+async function login(){PIN=document.getElementById('pin').value.trim();try{await call('settings');localStorage.setItem('edgescope_pin',PIN);document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings();loadAutoStatus();show('scan')}catch(e){document.getElementById('loginMsg').textContent='Code PIN incorrect.'}}
 function logout(){localStorage.removeItem('edgescope_pin');PIN='';document.getElementById('app').classList.add('hide');document.getElementById('login').classList.remove('hide')}
 function show(id){for(const x of ['scan','history','performance','settings'])document.getElementById(x).classList.toggle('hide',x!==id)}
 async function doScan(){show('scan');scanBtn.disabled=true;status.textContent='Scan global en cours… cela peut prendre une vingtaine de secondes.';rows.innerHTML='';try{const x=await call('scan',{extra:'&sport=all'});if(x.status==='missing_api_key'){status.textContent='Configure la clé OddsPapi dans Réglages.';return}if(x.status!=='ok'){status.textContent='Erreur: '+(x.error||x.status);return}const cv=x.coverage||{};n.textContent=(x.rows||[]).length;sports.textContent=cv.sports??'—';tours.textContent=cv.tournaments??'—';best.textContent=x.rows?.[0]?pc(x.rows[0].edge):'—';status.textContent=(x.rows||[]).length?((x.cached?'Résultat en cache · ':'')+(x.rows.length)+' opportunité(s) détectée(s).'):'Scan terminé : aucune value ≥ 2,5% détectée sur la couverture actuelle.';rows.innerHTML=(x.rows||[]).map(o=>{
@@ -86,6 +87,17 @@ try{
  }
 }catch(e){if(box)box.innerHTML='<span class="stop">Erreur d’actualisation.</span> Réessaie dans quelques secondes.'}
 }
+async function loadAutoStatus(){
+ try{
+  const x=await call('autostatus'),s=x.data||{};
+  const mode=s.last_mode==='free-safe'?'GRATUIT':s.last_mode==='starter'?'STARTER':s.last_mode==='pro'?'PRO':'—';
+  const last=s.last_tick_at?new Date(s.last_tick_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+  const actual=s.last_paid_scan_at?new Date(s.last_paid_scan_at).toLocaleString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'—';
+  const next=s.last_mode==='free-safe'?'1 vrai scan/h · contrôle toutes les 15 min':'scan multi-sports toutes les 15 min';
+  autoStatusCard.innerHTML='<div class="historyHead"><b>🟢 AUTO ACTIF · '+mode+'</b><span class="pill">'+(s.last_status||'prêt')+'</span></div><div class="muted" style="margin-top:7px">'+next+' · dernier contrôle '+last+' · dernier scan cotes '+actual+'</div><div class="betMeta"><span>Parlay <b>'+Number(s.parlay_used||0)+'/ '+(Number(s.parlay_used||0)+Number(s.parlay_remaining||0)||'—')+'</b></span><span>The Odds <b>'+Number(s.theodds_remaining||0)+' restants</b></span><span>Derniers signaux <b>'+Number(s.last_opportunities||0)+'</b></span></div>';
+ }catch(e){autoStatusCard.innerHTML='<b>Scan automatique</b><div class="muted">État indisponible momentanément.</div>'}
+}
+
 async function loadHistory(){
  show('history');
  const x=await call('history');
@@ -120,7 +132,7 @@ async function loadPerf(){
 }
 async function loadSettings(){show('settings');const x=await call('settings');setstatus.textContent='ParlayAPI : '+(x.parlayapi?'configuré':'à configurer')+' · The Odds API : '+(x.theoddsapi?'configuré':'à configurer')+' · OddsPapi : '+(x.oddspapi?'configuré':'à configurer')}
 async function saveSettings(){const pkey=parlaykey.value.trim(),tkey=theoddskey.value.trim(),okey=opkey.value.trim();if(!pkey&&!tkey&&!okey){setstatus.textContent='Colle au moins une clé à enregistrer.';return}setstatus.textContent='Validation de la clé…';const body={};if(pkey)body.parlayApiKey=pkey;if(tkey)body.theOddsApiKey=tkey;if(okey)body.oddspapiKey=okey;const x=await call('settings',{method:'POST',body});if(x.error){setstatus.textContent=x.message||x.error;return}parlaykey.value='';theoddskey.value='';opkey.value='';setstatus.textContent='Clé validée et enregistrée.'}
-if(PIN){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings().catch(()=>logout())}
+if(PIN){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings().catch(()=>logout());loadAutoStatus()}
 </script>
 </body>
 </html>
