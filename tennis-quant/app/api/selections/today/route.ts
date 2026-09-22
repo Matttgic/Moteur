@@ -705,6 +705,13 @@ export async function GET(request: NextRequest) {
         oddsProvider: oddsResult.provider ?? "OddsPapi",
         oddsDiscoveryMode:
           oddsResult.providerDiagnostics?.discoveryMode ?? null,
+        fallbackConfigured:
+          oddsResult.providerDiagnostics?.fallbackConfigured ?? false,
+        fallbackProvider:
+          oddsResult.providerDiagnostics?.fallbackProvider ?? null,
+        fallbackDiscoveryMode:
+          oddsResult.providerDiagnostics?.fallbackDiagnostics?.discoveryMode ??
+          null,
         liveAccepted: liveResult.accepted_matches,
         liveModelEligible: liveResult.model_eligible_matches,
         oddsFixtures: oddsResult.fixtures.length,
