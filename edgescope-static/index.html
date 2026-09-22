@@ -75,14 +75,17 @@ async function loadAutoStatus(){
 async function loadSignals(){
  try{
   const x=await call('history');
-  const active=(x.rows||[]).filter(r=>!r.settlement_result).slice(0,8);
+  const active=(x.rows||[]).filter(r=>!r.settlement_result&&r.revalidation_status==='valid').slice(0,8);
   rows.innerHTML=active.map(r=>{
    const market=humanMarket(r.market_key||'');
    const bet=humanBet(r.selection||'',market);
-   const when=r.detected_at?new Date(r.detected_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
-   const min=Number(r.fair_odds||0)>0?(Number(r.fair_odds)*1.025).toFixed(2):'—';
-   return '<article class="betCard"><div class="betTop"><span class="signal">AUTO</span><span class="sportTag">'+String(r.sport_key||'')+'</span></div><div class="betTitle">OPPORTUNITÉ DÉTECTÉE</div><div class="betPick">'+bet+'</div><div class="betOdds">@ '+Number(r.offered_odds||0).toFixed(2)+' chez '+bookName(r.bookmaker_key)+'</div><div class="betEvent">'+r.event_name+(when?' · détecté '+when:'')+'</div><div class="betMeta"><span>Cote mini <b>'+min+'</b></span><span>Edge <b class="good">'+pc(r.edge)+'</b></span><span>Score technique <b>'+Number(r.confidence||0)+'/100</b></span></div></article>'
-  }).join('')||'<div class="card muted">Aucune opportunité en attente actuellement.</div>';
+   const when=r.revalidated_at?new Date(r.revalidated_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+   const odds=Number(r.execution_odds||r.offered_odds||0);
+   const book=r.execution_bookmaker||bookName(r.bookmaker_key);
+   const min=Number(r.execution_min_odds||0)>0?Number(r.execution_min_odds).toFixed(2):(Number(r.fair_odds||0)*1.025).toFixed(2);
+   const edge=r.execution_edge==null?r.edge:r.execution_edge;
+   return '<article class="betCard"><div class="betTop"><span class="signal">REVÉRIFIÉ</span><span class="sportTag">'+String(r.sport_key||'')+'</span></div><div class="betTitle">OPPORTUNITÉ EXÉCUTABLE</div><div class="betPick">'+bet+'</div><div class="betOdds">@ '+odds.toFixed(2)+' chez '+book+'</div><div class="betEvent">'+r.event_name+(when?' · revérifié '+when:'')+'</div><div class="betMeta"><span>Cote mini <b>'+min+'</b></span><span>Edge actuel <b class="good">'+pc(edge)+'</b></span><span>Score technique <b>'+Number(r.confidence||0)+'/100</b></span></div></article>'
+  }).join('')||'<div class="card muted">Aucune opportunité revérifiée et exécutable actuellement. Les simples détections non revérifiées ne sont plus affichées ici.</div>';
  }catch(e){rows.innerHTML='<div class="card muted">Impossible de charger les opportunités momentanément.</div>'}
 }
 
