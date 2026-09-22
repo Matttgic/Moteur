@@ -67,7 +67,11 @@ type SelectionResponse = {
     oddsDiscoveryMode?: string | null;
     liveAccepted: number;
     liveModelEligible?: number;
+    providerDiscoveredFixtures?: number;
     oddsFixtures: number;
+    matchedOddsFixtures?: number;
+    unmatchedOddsFixtures?: number;
+    oddsCoverageRatio?: number | null;
     analyzed: number;
     rejected: number;
   };
@@ -205,8 +209,24 @@ export default function LiveSelections() {
               Matchs analysés : <strong>{data.sourceSummary.analyzed}</strong>
             </span>
             <span>
-              Cotes trouvées : <strong>{data.sourceSummary.oddsFixtures}</strong>
+              Cotes fournisseur : <strong>{data.sourceSummary.oddsFixtures}</strong>
             </span>
+            <span>
+              Couverture :{" "}
+              <strong>
+                {data.sourceSummary.matchedOddsFixtures ??
+                  data.sourceSummary.oddsFixtures}
+                /
+                {data.sourceSummary.liveModelEligible ??
+                  data.sourceSummary.liveAccepted}
+              </strong>
+            </span>
+            {typeof data.sourceSummary.unmatchedOddsFixtures === "number" ? (
+              <span>
+                Cotes non appariées :{" "}
+                <strong>{data.sourceSummary.unmatchedOddsFixtures}</strong>
+              </span>
+            ) : null}
           </div>
 
           {data.bets.length ? (
@@ -293,6 +313,17 @@ export default function LiveSelections() {
               </span>
             </div>
           )}
+
+          {(data.sourceSummary.liveModelEligible ??
+            data.sourceSummary.liveAccepted) >
+            (data.sourceSummary.matchedOddsFixtures ??
+              data.sourceSummary.oddsFixtures) ? (
+            <p className="liveUpdated">
+              {data.sourceSummary.unmatchedOddsFixtures === 0
+                ? `${(data.sourceSummary.liveModelEligible ?? data.sourceSummary.liveAccepted) - (data.sourceSummary.matchedOddsFixtures ?? data.sourceSummary.oddsFixtures)} match(s) n'ont pas encore de marché exploitable chez les bookmakers suivis. Ils seront recontrôlés automatiquement au prochain snapshot.`
+                : `${data.sourceSummary.unmatchedOddsFixtures ?? 0} cote(s) fournisseur restent à rapprocher d'un match live ; le moteur les exclut tant que l'appariement n'est pas sûr.`}
+            </p>
+          ) : null}
 
           <p className="liveUpdated">
             Calcul serveur : {formatTime(data.generatedAt)}
