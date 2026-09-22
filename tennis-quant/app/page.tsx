@@ -1,6 +1,7 @@
 import benchmark from "@/ml/benchmark_reference.json";
-import LiveSelections from "./live-selections";
+import QualityLiveSelections from "./quality-live-selections";
 import EconomicValidation from "./economic-validation";
+import QualityEconomics from "./quality-economics";
 import SystemHealth from "./system-health";
 import ShadowLab from "./shadow-lab";
 
@@ -19,7 +20,7 @@ export default function Home() {
           <p className="eyebrow">ATP + WTA · PRE-MATCH RESEARCH</p>
           <h1>Tennis Quant Engine</h1>
           <p className="subtitle">
-            Probabilité → cote juste → marché sans marge → edge → EV → décision.
+            Probabilité → cote juste → marché sans marge → edge → EV → qualité → décision.
           </p>
         </div>
         <span className="status">ML VALIDÉ · ÉCONOMIE EN COLLECTE</span>
@@ -39,8 +40,8 @@ export default function Home() {
           <strong>{totalOos.toLocaleString("fr-FR")}</strong>
         </article>
         <article>
-          <span>Validation</span>
-          <strong>Walk-forward</strong>
+          <span>Filtre qualité</span>
+          <strong>≥ 70 / 100</strong>
         </article>
       </section>
 
@@ -99,8 +100,6 @@ export default function Home() {
             </article>
           );
         })}
-
-
       </div>
 
       <section className="metricGuide">
@@ -117,17 +116,20 @@ export default function Home() {
           <strong>Ce qui compte pour parier</strong>
           <p>
             Une bonne prédiction ne suffit pas : la vraie question est de savoir
-            si notre probabilité bat le prix du bookmaker. C'est pour cela que
-            ROI, drawdown et CLV sont suivis séparément ci-dessous.
+            si notre probabilité bat le prix du bookmaker, puis si ce signal est
+            suffisamment robuste pour être exécuté. ROI, drawdown, CLV et Bet
+            Quality Score sont donc suivis séparément.
           </p>
         </div>
       </section>
 
       <EconomicValidation />
 
+      <QualityEconomics />
+
       <ShadowLab />
 
-      <LiveSelections />
+      <QualityLiveSelections />
 
       <section className="method">
         <div>
@@ -142,7 +144,7 @@ export default function Home() {
           <p><strong>5.</strong> NO BET reste une sortie de premier rang.</p>
           <p><strong>6.</strong> ROI, drawdown et CLV mesurés sur les picks réellement sortis.</p>
           <p><strong>7.</strong> Settlement et contrôle santé automatisés par cron.</p>
-          <p><strong>8.</strong> Variantes shadow séparées du champion, sans auto-promotion.</p>
+          <p><strong>8.</strong> Bet Quality Score ≥ 70 requis pour proposer un VALUE/PREMIUM.</p>
         </div>
       </section>
 

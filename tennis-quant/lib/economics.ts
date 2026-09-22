@@ -1,3 +1,5 @@
+import { calculateBetQuality } from "@/lib/bet-quality";
+
 const ECONOMIC_EDGE_URL =
   "https://uciolnhvddbindxajzti.supabase.co/functions/v1/tennis-economic-runtime";
 
@@ -46,6 +48,7 @@ type EconomicBetRow = {
   market: {
     bookmaker: string;
     sourceCount?: number;
+    priceSpreadRatio?: number | null;
   };
   decision: {
     side: "A" | "B";
@@ -56,6 +59,7 @@ type EconomicBetRow = {
     edge: number;
     ev: number;
     fairOdds: number;
+    sharpProbability?: number | null;
     tier: string;
     stakeUnits: number;
     bet: boolean;
@@ -68,8 +72,30 @@ export async function recordEconomicBets(
 ) {
   if (!bets.length) return null;
 
+  const scored = bets
+    .map((row) => ({
+      row,
+      quality: calculateBetQuality({
+        modelQuality: row.model.quality,
+        sourceCount: row.market.sourceCount ?? 0,
+        sharpProbability: row.decision.sharpProbability ?? null,
+        modelProbability: row.decision.modelProbability,
+        edge: row.decision.edge,
+        ev: row.decision.ev,
+        odds: row.decision.odds,
+        priceSpreadRatio: row.market.priceSpreadRatio ?? null,
+      }),
+    }))
+    .filter(({ row, quality }) =>
+      row.model.mode === "full_logit" &&
+      row.decision.bet &&
+      quality.actionable,
+    );
+
+  if (!scored.length) return null;
+
   return economicRequest("record_bets", {
-    bets: bets.map((row) => ({
+    bets: scored.map(({ row, quality }) => ({
       providerMatchId: String(row.matchId ?? ""),
       tour,
       scheduledAt: row.scheduledTime,
@@ -90,6 +116,10 @@ export async function recordEconomicBets(
       modelMode: row.model.mode,
       modelQuality: row.model.quality,
       sourceCount: row.market.sourceCount ?? null,
+      qualityScore: quality.score,
+      qualityGrade: quality.grade,
+      qualityComponents: quality.components,
+      qualitySignals: quality.signals,
     })),
   });
 }
