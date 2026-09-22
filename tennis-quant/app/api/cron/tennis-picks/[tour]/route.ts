@@ -76,6 +76,7 @@ export async function GET(
       status: payload?.status ?? null,
       picksRecorded,
       generatedAt: payload?.generatedAt ?? new Date().toISOString(),
+      providerDiagnostics: payload?.internalDiagnostics ?? null,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown_error";
