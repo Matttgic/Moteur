@@ -52,6 +52,8 @@ If this key is not configured, the system remains operational with OddsPapi but 
 
 ## Security / quota hardening
 
+- Private provider fallback diagnostics expose only HTTP status/error-code classification to authenticated scheduler calls; API keys and raw provider responses remain hidden.
+
 - `/api/selections/today` is public but read-only.
 - Provider refresh requires `refresh=1` plus `Authorization: Bearer <CRON_SECRET>`.
 - Public requests cannot record economic or shadow picks.
