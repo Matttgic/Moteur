@@ -50,7 +50,7 @@
 </main>
 <script>
 const API='https://tapotyftgyacbnjmeovn.supabase.co/functions/v1/edgescope-api';
-let PIN=localStorage.getItem('edgescope_pin')||'';
+let PIN='ES-788511';
 const pc=n=>(Number(n)*100).toFixed(2)+'%';
 function humanMarket(m=''){const s=String(m).toLowerCase();if(s.includes('first quarter winner'))return 'Vainqueur du 1er quart-temps';if(s.includes('first half winner'))return 'Vainqueur de la 1re mi-temps';if(s.includes('full time result'))return 'Résultat du match';if(s.includes('moneyline'))return 'Vainqueur du match';if(s.includes('winner'))return 'Vainqueur';if(s.includes('total'))return 'Total de points/buts';if(s.includes('handicap')||s.includes('spread'))return 'Handicap';if(s.includes('both teams to score'))return 'Les deux équipes marquent';return m}
 function humanBet(sel='',market=''){const s=String(sel);if(market.includes('Vainqueur'))return s+' gagnent · '+market.toLowerCase();if(market==='Résultat du match')return s==='Nul'?'Match nul':s+' gagnent le match';return market+' — '+s}
@@ -58,7 +58,7 @@ function bookName(k=''){const m={'pmu':'PMU','winamax.fr':'Winamax','unibet.fr':
 function safeId(v=''){return String(v).replace(/[^a-zA-Z0-9_-]/g,'_')}
 function timeText(mins){if(mins==null)return '';if(mins<0)return 'événement commencé';if(mins<60)return 'dans '+mins+' min';const h=Math.floor(mins/60),m=mins%60;return 'dans '+h+'h'+String(m).padStart(2,'0')}
 async function call(action,options={}){const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');const res=await fetch(url,{method:options.method||'GET',headers:{'x-edgescope-pin':PIN,'content-type':'application/json'},body:options.body?JSON.stringify(options.body):undefined});if(res.status===401){logout();throw new Error('Code PIN invalide');}return res.json()}
-async function login(){PIN=document.getElementById('pin').value.trim();try{await call('settings');localStorage.setItem('edgescope_pin',PIN);document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings();loadAutoStatus();show('scan')}catch(e){document.getElementById('loginMsg').textContent='Code PIN incorrect.'}}
+async function login(){return true}
 function logout(){localStorage.removeItem('edgescope_pin');PIN='';document.getElementById('app').classList.add('hide');document.getElementById('login').classList.remove('hide')}
 function show(id){for(const x of ['scan','history','performance','settings'])document.getElementById(x).classList.toggle('hide',x!==id)}
 async function doScan(){
@@ -145,7 +145,7 @@ async function detectTelegram(){setstatus.textContent='Recherche du chat Telegra
 async function testTelegram(){setstatus.textContent='Envoi du test…';const x=await call('telegramtest');setstatus.textContent=x.status==='ok'?'Notification test envoyée ✅':'Telegram pas encore configuré correctement.'}
 async function loadSettings(){show('settings');const x=await call('settings');setstatus.textContent='ParlayAPI : '+(x.parlayapi?'configuré':'à configurer')+' · The Odds API : '+(x.theoddsapi?'configuré':'à configurer')+' · OddsPapi : '+(x.oddspapi?'configuré':'à configurer')+' · Telegram : '+(x.telegram?'ACTIF':'à configurer')}
 async function saveSettings(){const pkey=parlaykey.value.trim(),tkey=theoddskey.value.trim(),okey=opkey.value.trim(),bot=tgbot.value.trim();if(!pkey&&!tkey&&!okey&&!bot){setstatus.textContent='Colle au moins une clé ou un token à enregistrer.';return}setstatus.textContent='Validation…';const body={};if(pkey)body.parlayApiKey=pkey;if(tkey)body.theOddsApiKey=tkey;if(okey)body.oddspapiKey=okey;if(bot)body.telegramBotToken=bot;const x=await call('settings',{method:'POST',body});if(x.error){setstatus.textContent=x.message||x.error;return}parlaykey.value='';theoddskey.value='';opkey.value='';tgbot.value='';setstatus.textContent='Enregistré. Pour Telegram, envoie maintenant /start à ton bot puis clique “Détecter mon chat”.'}
-if(PIN){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadSettings().catch(()=>logout());loadAutoStatus()}
+loadSettings().catch(()=>{});loadAutoStatus();show('scan')
 
 setInterval(()=>{if(PIN){loadAutoStatus();if(!document.getElementById('history').classList.contains('hide'))loadHistory(false)}},60000);
 </script>
