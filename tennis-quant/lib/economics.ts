@@ -73,6 +73,9 @@ export async function recordEconomicBets(
   if (!bets.length) return null;
 
   const scored = bets
+    .filter(
+      (row) => row.model.mode === "full_logit" && row.decision.bet,
+    )
     .map((row) => ({
       row,
       quality: calculateBetQuality({
@@ -85,12 +88,7 @@ export async function recordEconomicBets(
         odds: row.decision.odds,
         priceSpreadRatio: row.market.priceSpreadRatio ?? null,
       }),
-    }))
-    .filter(({ row, quality }) =>
-      row.model.mode === "full_logit" &&
-      row.decision.bet &&
-      quality.actionable,
-    );
+    }));
 
   if (!scored.length) return null;
 
