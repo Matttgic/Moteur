@@ -263,7 +263,7 @@ export default function EconomicValidation() {
         <article>
           <span>Bet Quality moyen</span>
           <strong>{stats.avgQualityScore == null ? "—" : `${Math.round(stats.avgQualityScore)}/100`}</strong>
-          <small>score observé, pas encore bloquant</small>
+          <small>seuil ≥70 requis pour être proposé</small>
         </article>
         <article>
           <span>Cote moyenne</span>
@@ -288,7 +288,7 @@ export default function EconomicValidation() {
             <p className="eyebrow">HISTORIQUE DES PARIS</p>
             <h3>Tous les picks enregistrés</h3>
             <p>
-              Les paris en attente restent visibles jusqu'à leur règlement. Les grades A+/A/B/C/D permettront de comparer leur rentabilité réelle.
+              Les paris en attente restent visibles jusqu'à leur règlement. Les grades A+/A/B/C/D permettent de comparer leur rentabilité réelle.
             </p>
           </div>
           <span>{history.length} pick{history.length > 1 ? "s" : ""}</span>
