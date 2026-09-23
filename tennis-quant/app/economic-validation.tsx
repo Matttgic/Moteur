@@ -15,6 +15,7 @@ type Aggregate = {
   avgOdds: number | null;
   avgEdge: number | null;
   avgEv: number | null;
+  avgQualityScore: number | null;
   maxDrawdownUnits: number;
   avgClv: number | null;
   clvSamples: number;
@@ -40,6 +41,10 @@ type HistoryRow = {
   stakeUnits: number;
   modelMode: string;
   modelQuality: number | null;
+  qualityScore: number | null;
+  qualityGrade: string | null;
+  qualityComponents?: Record<string, number> | null;
+  qualitySignals?: string[] | null;
   closingOdds: number | null;
   clv: number | null;
   result: "WIN" | "LOSS" | null;
@@ -55,6 +60,7 @@ type EconomicSummary = {
   byTour: Array<{ name: string } & Aggregate>;
   byModel: Array<{ name: string } & Aggregate>;
   byTier: Array<{ name: string } & Aggregate>;
+  byQuality?: Array<{ name: string } & Aggregate>;
   last10: Array<{
     result: "WIN" | "LOSS";
     tour: string;
@@ -65,6 +71,8 @@ type EconomicSummary = {
     profitUnits: number;
     modelMode: string;
     tier: string;
+    qualityScore?: number | null;
+    qualityGrade?: string | null;
     scheduledAt: string;
   }>;
   history?: HistoryRow[];
@@ -80,6 +88,9 @@ const units = (value: number) =>
 
 const decimal = (value: number | null, digits = 2) =>
   value == null ? "—" : Number(value).toFixed(digits);
+
+const quality = (score: number | null, grade: string | null) =>
+  score == null ? "—" : `${Math.round(Number(score))}/100${grade ? ` · ${grade}` : ""}`;
 
 const formatDate = (value: string | null) => {
   if (!value) return "Date inconnue";
@@ -196,7 +207,7 @@ export default function EconomicValidation() {
           Les picks proposés sont enregistrés puis comparés aux résultats
           officiels pour mesurer la performance économique réelle.
         </p>
-        <span>ROI · Drawdown · CLV</span>
+        <span>ROI · Drawdown · CLV · Bet Quality</span>
       </article>
     );
   }
@@ -204,14 +215,14 @@ export default function EconomicValidation() {
   const stats = data.overall;
 
   return (
-    <section className="economicPanel" aria-label="Validation économique" data-history-version="2">
+    <section className="economicPanel" aria-label="Validation économique" data-history-version="3">
       <div className="economicHeader">
         <div>
           <p className="eyebrow">ECONOMIC VALIDATION · LIVE TRACKING</p>
           <h2>Performance des picks réellement proposés</h2>
           <p>
             Pas de ROI théorique : uniquement les sélections réellement sorties
-            par le moteur, avec leurs cotes au moment de la décision.
+            par le moteur, avec leur cote et leur Bet Quality Score au moment de la décision.
           </p>
         </div>
         <span className="economicStatus">{statusText(data.sampleStatus)}</span>
@@ -250,6 +261,11 @@ export default function EconomicValidation() {
           <small>paris gagnants</small>
         </article>
         <article>
+          <span>Bet Quality moyen</span>
+          <strong>{stats.avgQualityScore == null ? "—" : `${Math.round(stats.avgQualityScore)}/100`}</strong>
+          <small>score observé, pas encore bloquant</small>
+        </article>
+        <article>
           <span>Cote moyenne</span>
           <strong>{stats.avgOdds?.toFixed(2) ?? "—"}</strong>
           <small>au moment du pick</small>
@@ -272,7 +288,7 @@ export default function EconomicValidation() {
             <p className="eyebrow">HISTORIQUE DES PARIS</p>
             <h3>Tous les picks enregistrés</h3>
             <p>
-              Les paris en attente restent visibles jusqu'à leur règlement.
+              Les paris en attente restent visibles jusqu'à leur règlement. Les grades A+/A/B/C/D permettront de comparer leur rentabilité réelle.
             </p>
           </div>
           <span>{history.length} pick{history.length > 1 ? "s" : ""}</span>
@@ -328,6 +344,10 @@ export default function EconomicValidation() {
                       <strong>{row.bookmaker}</strong>
                     </div>
                     <div>
+                      <span>Quality</span>
+                      <strong>{quality(row.qualityScore, row.qualityGrade)}</strong>
+                    </div>
+                    <div>
                       <span>Proba modèle</span>
                       <strong>{pct(row.modelProbability)}</strong>
                     </div>
@@ -353,6 +373,7 @@ export default function EconomicValidation() {
                     <div>
                       <span>{row.tier}</span>
                       <span>{row.modelMode === "full_logit" ? "FULL ML" : row.modelMode}</span>
+                      {row.qualityGrade ? <span>QUALITY {row.qualityGrade}</span> : null}
                       {row.closingOdds != null ? (
                         <span>Clôture {Number(row.closingOdds).toFixed(2)}</span>
                       ) : null}
@@ -385,6 +406,7 @@ export default function EconomicValidation() {
                 key={`${row.player}-${row.scheduledAt}-${index}`}
               >
                 {row.result === "WIN" ? "W" : "L"} · {row.player} @{Number(row.odds).toFixed(2)}
+                {row.qualityGrade ? ` · Q${row.qualityGrade}` : ""}
               </span>
             ))}
           </div>

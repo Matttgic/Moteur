@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { calculateBetQuality } from "@/lib/bet-quality";
 
 type Tour = "ATP" | "WTA";
 
@@ -37,6 +38,7 @@ type BetRow = {
     edge: number;
     ev: number;
     fairOdds: number;
+    sharpProbability?: number | null;
     tier: "PREMIUM" | "VALUE" | "LEAN" | "NO_BET";
     stakeUnits: number;
     bet: boolean;
@@ -87,6 +89,27 @@ type SelectionResponse = {
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const signedPct = (value: number) =>
   `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)}%`;
+
+function qualityFor(row: BetRow) {
+  return calculateBetQuality({
+    modelQuality: row.model.quality,
+    sourceCount: row.market.sourceCount ?? 0,
+    sharpProbability: row.decision.sharpProbability ?? null,
+    modelProbability: row.decision.modelProbability,
+    edge: row.decision.edge,
+    ev: row.decision.ev,
+    odds: row.decision.odds,
+    priceSpreadRatio: row.market.priceSpreadRatio ?? null,
+  });
+}
+
+function qualityLabel(score: number) {
+  if (score >= 90) return "EXCELLENT";
+  if (score >= 80) return "TRÈS SOLIDE";
+  if (score >= 70) return "SOLIDE";
+  if (score >= 60) return "À SURVEILLER";
+  return "FRAGILE";
+}
 
 function matchLabel(row: BetRow) {
   const opponent =
@@ -152,8 +175,8 @@ export default function LiveSelections() {
           <h2>Sélections du moteur</h2>
           <p>
             Le moteur peut répondre <strong>NO BET</strong>. Les paris à miser
-            exigent désormais le <strong>FULL ML</strong>. Le fallback ranking
-            reste visible dans l'analyse mais n'est jamais proposé comme pari.
+            exigent le <strong>FULL ML</strong>. Le Bet Quality Score 0–100
+            mesure la robustesse du signal sans modifier encore les seuils de pari.
           </p>
         </div>
 
@@ -231,68 +254,88 @@ export default function LiveSelections() {
 
           {data.bets.length ? (
             <div className="cards liveCards">
-              {data.bets.map((row) => (
-                <article
-                  className="matchCard liveBetCard"
-                  key={`${row.matchId}-${row.decision.player}`}
-                >
-                  <div className="matchTop">
-                    <div>
-                      <span className="pill">{tour}</span>
-                      <span className="muted">{row.surface ?? "Surface inconnue"}</span>
-                    </div>
-                    <span className={`tier tier-${row.decision.tier.toLowerCase()}`}>
-                      {row.decision.tier}
-                    </span>
-                  </div>
+              {data.bets.map((row) => {
+                const quality = qualityFor(row);
 
-                  <p className="liveTournament">
-                    {row.tournament ?? "Tournoi"} · {formatTime(row.scheduledTime)}
-                  </p>
+                return (
+                  <article
+                    className="matchCard liveBetCard"
+                    key={`${row.matchId}-${row.decision.player}`}
+                  >
+                    <div className="matchTop">
+                      <div>
+                        <span className="pill">{tour}</span>
+                        <span className="muted">{row.surface ?? "Surface inconnue"}</span>
+                      </div>
+                      <span className={`tier tier-${row.decision.tier.toLowerCase()}`}>
+                        {row.decision.tier}
+                      </span>
+                    </div>
 
-                  <h3>{matchLabel(row)}</h3>
+                    <p className="liveTournament">
+                      {row.tournament ?? "Tournoi"} · {formatTime(row.scheduledTime)}
+                    </p>
 
-                  <div className="pickHero">
-                    <span>PARI SÉLECTIONNÉ</span>
-                    <strong>{row.decision.player}</strong>
-                    <div>
-                      <b>{row.market.bookmaker}</b>
-                      <b>Cote {row.decision.odds.toFixed(2)}</b>
-                    </div>
-                  </div>
+                    <h3>{matchLabel(row)}</h3>
 
-                  <div className="decision liveDecision">
-                    <div>
-                      <span>Proba modèle</span>
-                      <strong>{pct(row.decision.modelProbability)}</strong>
+                    <div className="pickHero">
+                      <span>PARI SÉLECTIONNÉ</span>
+                      <strong>{row.decision.player}</strong>
+                      <div>
+                        <b>{row.market.bookmaker}</b>
+                        <b>Cote {row.decision.odds.toFixed(2)}</b>
+                      </div>
                     </div>
-                    <div>
-                      <span>Cote juste</span>
-                      <strong>{row.decision.fairOdds.toFixed(2)}</strong>
-                    </div>
-                    <div>
-                      <span>Edge</span>
-                      <strong>{signedPct(row.decision.edge)}</strong>
-                    </div>
-                    <div>
-                      <span>EV</span>
-                      <strong>{signedPct(row.decision.ev)}</strong>
-                    </div>
-                  </div>
 
-                  <div className="liveTags">
-                    <span>
-                      {row.model.mode === "full_logit"
-                        ? "FULL ML"
-                        : "RANK FALLBACK"}
-                    </span>
-                    <span>Mise {row.decision.stakeUnits.toFixed(2)}u</span>
-                    {typeof row.market.sourceCount === "number" ? (
-                      <span>{row.market.sourceCount} book(s) FR</span>
-                    ) : null}
-                  </div>
-                </article>
-              ))}
+                    <div className="decision liveDecision">
+                      <div>
+                        <span>Quality Score</span>
+                        <strong>{quality.score}/100 · {quality.grade}</strong>
+                      </div>
+                      <div>
+                        <span>Robustesse</span>
+                        <strong>{qualityLabel(quality.score)}</strong>
+                      </div>
+                      <div>
+                        <span>Proba modèle</span>
+                        <strong>{pct(row.decision.modelProbability)}</strong>
+                      </div>
+                      <div>
+                        <span>Cote juste</span>
+                        <strong>{row.decision.fairOdds.toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        <span>Edge</span>
+                        <strong>{signedPct(row.decision.edge)}</strong>
+                      </div>
+                      <div>
+                        <span>EV</span>
+                        <strong>{signedPct(row.decision.ev)}</strong>
+                      </div>
+                    </div>
+
+                    <div className="liveTags">
+                      <span>
+                        {row.model.mode === "full_logit"
+                          ? "FULL ML"
+                          : "RANK FALLBACK"}
+                      </span>
+                      <span>Mise {row.decision.stakeUnits.toFixed(2)}u</span>
+                      <span>
+                        Qualité {quality.actionable ? "≥70" : "<70"}
+                      </span>
+                      {typeof row.market.sourceCount === "number" ? (
+                        <span>{row.market.sourceCount} book(s) FR</span>
+                      ) : null}
+                      {row.decision.sharpProbability != null ? (
+                        <span>Pinnacle confirmé</span>
+                      ) : (
+                        <span>Sans référence sharp</span>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           ) : data.status === "DATA_UNAVAILABLE" ? (
             <div className="liveState liveError">
@@ -324,6 +367,10 @@ export default function LiveSelections() {
                 : `${data.sourceSummary.unmatchedOddsFixtures ?? 0} cote(s) fournisseur restent à rapprocher d'un match live ; le moteur les exclut tant que l'appariement n'est pas sûr.`}
             </p>
           ) : null}
+
+          <p className="liveUpdated">
+            Bet Quality : A+ ≥90 · A ≥80 · B ≥70 · C ≥60 · D &lt;60. Le score est en validation et ne garantit pas la réussite d'un pari.
+          </p>
 
           <p className="liveUpdated">
             Calcul serveur : {formatTime(data.generatedAt)}
