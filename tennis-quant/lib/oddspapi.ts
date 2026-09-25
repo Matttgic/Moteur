@@ -724,18 +724,32 @@ export async function getTennisOdds(
   // Discover the current tennis board without bookmaker/hasOdds filters.
   // Those filters can remove a fixture when one requested bookmaker has not
   // opened its market yet, even when another bookmaker has.
-  const fixturePayload = await oddsApi<unknown>(
-    apiKey,
-    "fixtures",
-    {
-      sportId: String(TENNIS_SPORT_ID),
-      from: window.from,
-      to: window.to,
-      statusId: "0",
-      language: "en",
-    },
-    ODDSPAPI_DISCOVERY_CACHE_SECONDS,
-  );
+  let fixturePayload: unknown;
+  try {
+    fixturePayload = await oddsApi<unknown>(
+      apiKey,
+      "fixtures",
+      {
+        sportId: String(TENNIS_SPORT_ID),
+        from: window.from,
+        to: window.to,
+        statusId: "0",
+        language: "en",
+      },
+      ODDSPAPI_DISCOVERY_CACHE_SECONDS,
+    );
+  } catch (error) {
+    if (isHttpStatus(error, 429)) {
+      const fallback = await maybeTheOddsApiFallback(
+        tour,
+        bookmakers,
+        window,
+        tournamentHints,
+      );
+      if (fallback) return fallback;
+    }
+    throw error;
+  }
 
   const boardFixtures = normalizeFixturePayload(fixturePayload)
     .filter(
@@ -778,15 +792,29 @@ export async function getTennisOdds(
   // provider docs recommend tournament discovery before odds-by-tournaments,
   // so use it as a conservative fallback instead of treating the tour as empty.
   if (!tournamentMap.size) {
-    const tournamentPayload = await oddsApi<unknown>(
-      apiKey,
-      "tournaments",
-      {
-        sportId: String(TENNIS_SPORT_ID),
-        language: "en",
-      },
-      ODDSPAPI_DISCOVERY_CACHE_SECONDS,
-    );
+    let tournamentPayload: unknown;
+    try {
+      tournamentPayload = await oddsApi<unknown>(
+        apiKey,
+        "tournaments",
+        {
+          sportId: String(TENNIS_SPORT_ID),
+          language: "en",
+        },
+        ODDSPAPI_DISCOVERY_CACHE_SECONDS,
+      );
+    } catch (error) {
+      if (isHttpStatus(error, 429)) {
+        const fallback = await maybeTheOddsApiFallback(
+          tour,
+          bookmakers,
+          window,
+          tournamentHints,
+        );
+        if (fallback) return fallback;
+      }
+      throw error;
+    }
 
     const fallbackTournaments = normalizeTournamentPayload(tournamentPayload)
       .filter((tournament) => {
@@ -891,6 +919,17 @@ export async function getTennisOdds(
         }
       } catch (error) {
         requests += 1;
+
+        if (isHttpStatus(error, 429)) {
+          const fallback = await maybeTheOddsApiFallback(
+            tour,
+            bookmakers,
+            window,
+            tournamentHints,
+          );
+          if (fallback) return fallback;
+          throw error;
+        }
 
         // OddsPapi returns FIXTURE_NOT_FOUND when a bookmaker has no board for
         // the requested tournament set. That is an empty result, not a provider

@@ -5,8 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 type Aggregate = {
   total: number;
   settled: number;
+  graded?: number;
   pending: number;
   wins: number;
+  voids?: number;
   losses: number;
   stakeUnits: number;
   profitUnits: number;
@@ -47,7 +49,7 @@ type HistoryRow = {
   qualitySignals?: string[] | null;
   closingOdds: number | null;
   clv: number | null;
-  result: "WIN" | "LOSS" | null;
+  result: "WIN" | "LOSS" | "VOID" | null;
   profitUnits: number | null;
   settledAt: string | null;
   createdAt: string;
@@ -78,7 +80,7 @@ type EconomicSummary = {
   history?: HistoryRow[];
 };
 
-type HistoryFilter = "ALL" | "PENDING" | "WIN" | "LOSS";
+type HistoryFilter = "ALL" | "PENDING" | "WIN" | "LOSS" | "VOID";
 
 const pct = (value: number | null) =>
   value == null ? "—" : `${(Number(value) * 100).toFixed(1)}%`;
@@ -120,6 +122,10 @@ function historyStatus(row: HistoryRow) {
 
   if (row.result === "LOSS") {
     return { label: "PERDU", className: "historyStatus historyLoss" };
+  }
+
+  if (row.result === "VOID") {
+    return { label: "ANNULÉ", className: "historyStatus historyPending" };
   }
 
   return { label: "EN ATTENTE", className: "historyStatus historyPending" };
@@ -168,6 +174,7 @@ export default function EconomicValidation() {
       PENDING: history.filter((row) => row.result == null).length,
       WIN: history.filter((row) => row.result === "WIN").length,
       LOSS: history.filter((row) => row.result === "LOSS").length,
+      VOID: history.filter((row) => row.result === "VOID").length,
     }),
     [history],
   );
@@ -237,7 +244,7 @@ export default function EconomicValidation() {
         <article>
           <span>Bilan réglé</span>
           <strong>{stats.wins}-{stats.losses}</strong>
-          <small>{stats.settled} paris réglés</small>
+          <small>{stats.graded ?? stats.settled} paris gradés · {stats.voids ?? 0} annulé(s)</small>
         </article>
         <article>
           <span>Profit net</span>
@@ -300,6 +307,7 @@ export default function EconomicValidation() {
             ["PENDING", "En attente"],
             ["WIN", "Gagnés"],
             ["LOSS", "Perdus"],
+            ["VOID", "Annulés"],
           ] as const).map(([key, label]) => (
             <button
               type="button"

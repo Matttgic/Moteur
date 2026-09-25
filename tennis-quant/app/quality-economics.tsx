@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 type Aggregate = {
   total: number;
   settled: number;
+  graded?: number;
   pending: number;
   wins: number;
+  voids?: number;
   losses: number;
   stakeUnits: number;
   profitUnits: number;
@@ -94,7 +96,7 @@ export default function QualityEconomics() {
           <div className="liveTags">
             {rows.map((row) => (
               <span key={row.name}>
-                {row.name} · {row.settled} réglé(s) · ROI {pct(row.roi)} ·{" "}
+                {row.name} · {row.graded ?? row.settled} gradé(s) · ROI {pct(row.roi)} ·{" "}
                 {units(row.profitUnits)} · CLV {pct(row.avgClv)}
               </span>
             ))}
