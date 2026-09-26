@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#090b10">
+<title>EdgeScope</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#111722;--line:#273043;--muted:#93a0b5;--text:#f7f9fc;--green:#77e28b;--red:#ff8686;--accent:#ffffff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b0e14,#07090d 45%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;min-height:100vh}.wrap{max-width:1080px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{font-size:26px;font-weight:850;letter-spacing:-.4px}.muted{color:var(--muted);font-size:13px}.badge{border:1px solid var(--line);padding:6px 9px;border-radius:999px;color:var(--muted);font-size:12px}.nav{display:flex;gap:8px;overflow:auto;padding:14px 0}.nav button,.btn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:11px;padding:10px 13px;font-weight:700}.btn.primary{background:var(--accent);color:#080a0f}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.card{background:rgba(17,23,34,.96);border:1px solid var(--line);border-radius:16px;padding:14px}.metric b{display:block;font-size:23px;margin-top:6px}.tools{display:grid;grid-template-columns:1fr auto;gap:10px;margin:8px 0 14px}.list{display:grid;gap:9px}.row{display:grid;grid-template-columns:1.4fr 1fr .7fr .7fr .7fr;gap:10px;align-items:center}.betCard{background:linear-gradient(180deg,#121a28,#0e141e);border:1px solid #2a3548;border-radius:18px;padding:16px}.historyBet{background:linear-gradient(180deg,#121a28,#0e141e);border:1px solid #2a3548;border-radius:18px;padding:16px}.historyHead{display:flex;justify-content:space-between;align-items:center;gap:8px}.resultWin,.resultLose,.resultPending{font-size:11px;font-weight:850;border:1px solid #334057;border-radius:999px;padding:5px 8px}.resultWin{color:#77e28b}.resultLose{color:#ff8686}.resultPending{color:#ffca7a}.historyPick{font-size:19px;font-weight:850;line-height:1.25;margin-top:6px}.historyOdds{font-size:17px;font-weight:800;margin-top:8px}.historyEvent{color:#93a0b5;font-size:13px;margin-top:8px}.betTop{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px}.signal,.sportTag{font-size:11px;border:1px solid #334057;border-radius:999px;padding:5px 8px}.signal{color:#77e28b}.sportTag{color:#93a0b5}.betTitle{font-size:12px;letter-spacing:.12em;color:#93a0b5;font-weight:800}.betPick{font-size:20px;font-weight:850;margin-top:6px;line-height:1.2}.betOdds{font-size:18px;font-weight:800;margin-top:8px}.betEvent{color:#93a0b5;font-size:13px;margin-top:8px}.betMeta{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.betMeta span{background:#0a0f17;border:1px solid #253044;border-radius:10px;padding:7px 9px;font-size:12px}.betAction{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:14px}.betAction button,.betAction a{border-radius:11px;padding:10px 12px;font-weight:800;text-decoration:none}.refreshQuote{background:#f7f9fc;color:#080a0f;border:0}.bookLink{background:#111722;color:#f7f9fc;border:1px solid #334057}.quoteStatus{margin-top:10px;padding:10px;border-radius:11px;background:#0a0f17;border:1px solid #253044;font-size:13px}.now{color:#77e28b;font-weight:850}.wait{color:#ffb86b;font-weight:850}.stop{color:#ff8686;font-weight:850}.good{color:var(--green)}.bad{color:var(--red)}select,input{width:100%;background:#0c1119;color:var(--text);border:1px solid var(--line);border-radius:11px;padding:11px}.hide{display:none}.login{max-width:430px;margin:13vh auto}.login h1{margin:0 0 6px}.login .card{padding:20px}.login input{margin:14px 0}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:4px 7px;color:var(--muted);font-size:11px}.status{margin-bottom:10px}.small{font-size:12px}.section-title{margin:12px 0 8px}.progress{height:9px;background:#0a0f17;border:1px solid #253044;border-radius:999px;overflow:hidden;margin-top:9px}.progress>span{display:block;height:100%;background:#f7f9fc;width:0}.subtleTitle{font-size:14px;margin:18px 0 8px}
+@media(max-width:720px){.wrap{padding:12px}.grid{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr 1fr}.row>:first-child{grid-column:1/-1}.tools{grid-template-columns:1fr}.brand{font-size:23px}.betPick{font-size:19px}.betOdds{font-size:17px}.betMeta{display:grid;grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div id="login" class="hide"></div>
+
+<main id="app" class="wrap">
+  <div class="top"><div><div class="brand">EdgeScope</div><div class="muted">Value scanner multi-sports · référence Pinnacle</div></div><span class="badge">EDGESCOPE</span></div>
+  <div class="nav"><button onclick="show('scan')">Opportunités</button><button onclick="loadHistory()">Historique</button><button onclick="loadPerf()">Performance</button></div>
+
+  <section id="scan">
+    <div class="card status"><b>Scan 100 % automatique</b><div class="muted">Aucune action manuelle publique : les quotas API sont protégés côté serveur.</div></div>
+    <div id="autoStatusCard" class="card status"><b>Scan automatique</b><div class="muted">Chargement de l’état…</div></div>
+    <div class="grid">
+      <div class="card metric"><span class="muted">Exécutables 24 h</span><b id="n">—</b></div>
+      <div class="card metric"><span class="muted">Sports scannés 24 h</span><b id="sports">—</b></div>
+      <div class="card metric"><span class="muted">Dernier scan auto</span><b id="tours">—</b></div>
+      <div class="card metric"><span class="muted">Meilleur edge 24 h</span><b id="best">—</b></div>
+    </div>
+    <div id="status" class="card muted status">Scan automatique actif. Les chiffres ci-dessus se mettent à jour sans action manuelle.</div>
+    <h2 class="section-title">Opportunités en cours</h2>
+    <div id="rows" class="list"></div>
+  </section>
+
+  <section id="history" class="hide"><h2 class="section-title">Historique</h2><div id="hrows" class="list"></div></section>
+  <section id="performance" class="hide"><h2 class="section-title">Performance</h2><div id="validationCard" class="card status"><b>Validation en cours</b><div class="muted">Chargement…</div></div><div class="subtleTitle"><b>Signaux revérifiés et exécutables</b></div><div id="execgrid" class="grid"></div><div id="clvCard" class="card status muted">CLV : en attente de snapshots proches de la clôture.</div><div class="subtleTitle"><b>Tous les signaux détectés</b></div><div id="perfgrid" class="grid"></div><div class="card muted">La section exécutables est la référence principale : elle utilise la cote revérifiée juste avant l’alerte.</div></section>
+  <p class="muted small">18+ · Aucun gain garanti. Le score de confiance mesure la qualité technique du signal, pas sa probabilité de gagner.</p>
+</main>
+<script>
+const API='https://tapotyftgyacbnjmeovn.supabase.co/functions/v1/edgescope-api';
+const pc=n=>(Number(n)*100).toFixed(2)+'%';
+function humanMarket(m=''){const s=String(m).toLowerCase();if(s.includes('first quarter winner'))return 'Vainqueur du 1er quart-temps';if(s.includes('first half winner'))return 'Vainqueur de la 1re mi-temps';if(s.includes('full time result'))return 'Résultat du match';if(s.includes('moneyline'))return 'Vainqueur du match';if(s.includes('winner'))return 'Vainqueur';if(s.includes('total'))return 'Total de points/buts';if(s.includes('handicap')||s.includes('spread'))return 'Handicap';if(s.includes('both teams to score'))return 'Les deux équipes marquent';return m}
+function humanBet(sel='',market=''){const s=String(sel);if(market.includes('Vainqueur'))return s+' gagnent · '+market.toLowerCase();if(market==='Résultat du match')return s==='Nul'?'Match nul':s+' gagnent le match';return market+' — '+s}
+function bookName(k=''){const m={'pmu':'PMU','winamax.fr':'Winamax','unibet.fr':'Unibet','netbet.fr':'NetBet'};return m[k]||k}
+function safeId(v=''){return String(v).replace(/[^a-zA-Z0-9_-]/g,'_')}
+function timeText(mins){if(mins==null)return '';if(mins<0)return 'événement commencé';if(mins<60)return 'dans '+mins+' min';const h=Math.floor(mins/60),m=mins%60;return 'dans '+h+'h'+String(m).padStart(2,'0')}
+async function call(action,options={}){
+ const url=API+'?action='+encodeURIComponent(action)+(options.extra||'');
+ const headers=options.body?{'content-type':'application/json'}:{};
+ const res=await fetch(url,{method:options.method||'GET',headers,body:options.body?JSON.stringify(options.body):undefined});
+ if(!res.ok)throw new Error('API '+res.status);
+ return res.json()
+}
+function show(id){for(const x of ['scan','history','performance']){const el=document.getElementById(x);if(el)el.classList.toggle('hide',x!==id)}}
+async function loadAutoStatus(){
+ try{
+  const x=await call('autostatus'),s=x.data||{};
+  const mode=s.last_mode==='free-safe'?'GRATUIT':s.last_mode==='starter'?'STARTER':s.last_mode==='pro'?'PRO':'—';
+  const last=s.last_tick_at?new Date(s.last_tick_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+  const actual=s.last_paid_scan_at?new Date(s.last_paid_scan_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'—';
+  const next=s.last_mode==='free-safe'?'1 vrai scan/h · contrôle toutes les 15 min':'scan multi-sports toutes les 15 min';
+  autoStatusCard.innerHTML='<div class="historyHead"><b>🟢 AUTO ACTIF · '+mode+'</b><span class="pill">'+(s.last_status||'prêt')+'</span></div><div class="muted" style="margin-top:7px">'+next+' · dernier contrôle '+last+' · dernier scan cotes '+actual+'</div><div class="betMeta"><span>Parlay <b>'+Number(s.parlay_used||0)+'/ '+(Number(s.parlay_used||0)+Number(s.parlay_remaining||0)||'—')+'</b></span><span>The Odds <b>'+Number(s.theodds_remaining||0)+' restants</b></span><span>Derniers signaux <b>'+Number(s.last_opportunities||0)+'</b></span></div>';
+  n.textContent=Number(s.executable24h||0);
+  sports.textContent=Number(s.sportsScanned24h||0);
+  tours.textContent=actual;
+  best.textContent=s.bestEdge24h==null?'—':pc(s.bestEdge24h);
+  status.textContent='24 h : '+Number(s.opportunities24h||0)+' signal(aux) détecté(s) · '+Number(s.executable24h||0)+' réellement revérifié(s) et exécutable(s).';
+ }catch(e){
+  autoStatusCard.innerHTML='<b>Scan automatique</b><div class="muted">État indisponible momentanément.</div>';
+  status.textContent='Impossible de charger les métriques automatiques pour le moment.';
+ }
+}
+
+
+async function loadSignals(){
+ try{
+  const x=await call('history');
+  const active=(x.rows||[]).filter(r=>!r.settlement_result&&r.revalidation_status==='valid').slice(0,8);
+  rows.innerHTML=active.map(r=>{
+   const market=humanMarket(r.market_key||'');
+   const bet=humanBet(r.selection||'',market);
+   const when=r.revalidated_at?new Date(r.revalidated_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+   const odds=Number(r.execution_odds||r.offered_odds||0);
+   const book=r.execution_bookmaker||bookName(r.bookmaker_key);
+   const min=Number(r.execution_min_odds||0)>0?Number(r.execution_min_odds).toFixed(2):(Number(r.fair_odds||0)*1.025).toFixed(2);
+   const edge=r.execution_edge==null?r.edge:r.execution_edge;
+   return '<article class="betCard"><div class="betTop"><span class="signal">REVÉRIFIÉ</span><span class="sportTag">'+String(r.sport_key||'')+'</span></div><div class="betTitle">OPPORTUNITÉ EXÉCUTABLE</div><div class="betPick">'+bet+'</div><div class="betOdds">@ '+odds.toFixed(2)+' chez '+book+'</div><div class="betEvent">'+r.event_name+(when?' · revérifié '+when:'')+'</div><div class="betMeta"><span>Cote mini <b>'+min+'</b></span><span>Edge actuel <b class="good">'+pc(edge)+'</b></span><span>Score technique <b>'+Number(r.confidence||0)+'/100</b></span></div></article>'
+  }).join('')||'<div class="card muted">Aucune opportunité revérifiée et exécutable actuellement. Les simples détections non revérifiées ne sont plus affichées ici.</div>';
+ }catch(e){rows.innerHTML='<div class="card muted">Impossible de charger les opportunités momentanément.</div>'}
+}
+
+async function loadHistory(open=true){
+ if(open)show('history');
+ const x=await call('history');
+ hrows.innerHTML=(x.rows||[]).map(r=>{
+  const market=humanMarket(r.market_key||'');
+  const bet=humanBet(r.selection||'',market);
+  const when=r.detected_at?new Date(r.detected_at).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+  const sr=r.settlement_result||'PENDING';
+  const label=sr==='WIN'?'GAGNÉ':sr==='LOSE'?'PERDU':sr==='PUSH'?'REMBOURSÉ':sr==='HALFWIN'?'DEMI-GAGNÉ':sr==='HALFLOSS'?'DEMI-PERDU':sr==='CANCELLED'?'ANNULÉ':'EN ATTENTE';
+  const klass=['WIN','HALFWIN'].includes(sr)?'resultWin':['LOSE','HALFLOSS'].includes(sr)?'resultLose':'resultPending';
+  const executable=r.revalidation_status==='valid'&&Number(r.execution_odds)>1;
+  const execTag=executable?'<span class="signal">EXÉCUTABLE</span>':r.revalidation_status==='invalid'?'<span class="sportTag">VALUE DISPARUE</span>':'<span class="sportTag">ANCIEN SIGNAL</span>';
+  const detectedOdds=Number(r.offered_odds||0).toFixed(2);
+  const detectedBook=bookName(r.bookmaker_key);
+  const execLine=executable?'<div class="historyOdds">@ '+Number(r.execution_odds).toFixed(2)+' chez '+r.execution_bookmaker+' <span class="muted">· cote revérifiée</span></div><div class="muted small">Détection initiale : '+detectedOdds+' chez '+detectedBook+'</div>':'<div class="historyOdds">@ '+detectedOdds+' chez '+detectedBook+'</div>';
+  const min=Number(r.execution_min_odds||0)>0?Number(r.execution_min_odds).toFixed(2):(Number(r.fair_odds||0)>0?(Number(r.fair_odds)*1.025).toFixed(2):'—');
+  let pnl='';
+  if(executable&&['WIN','LOSE','HALFWIN','HALFLOSS','PUSH'].includes(sr)){
+   const o=Number(r.execution_odds),u=sr==='WIN'?o-1:sr==='LOSE'?-1:sr==='HALFWIN'?(o-1)/2:sr==='HALFLOSS'?-0.5:0;
+   pnl=(u*10>=0?'+':'')+(u*10).toFixed(2)+' €';
+  }else if(r.unit_profit!=null){pnl=((Number(r.unit_profit)*10)>=0?'+':'')+(Number(r.unit_profit)*10).toFixed(2)+' €'}
+  const clv=r.clv==null?'':('<span>CLV <b class="'+(Number(r.clv)>=0?'good':'bad')+'">'+(Number(r.clv)>=0?'+':'')+pc(r.clv)+'</b></span>');
+  const edge=executable&&r.execution_edge!=null?r.execution_edge:r.edge;
+  return '<article class="historyBet"><div class="historyHead"><div>'+execTag+'</div><span class="'+klass+'">'+label+'</span></div><div class="historyPick">'+bet+'</div>'+execLine+'<div class="historyEvent">'+r.event_name+(when?' · détecté '+when:'')+'</div><div class="betMeta"><span>Cote mini <b>'+min+'</b></span><span>Edge <b class="good">'+pc(edge)+'</b></span><span>Score <b>'+Number(r.confidence||0)+'/100</b></span>'+(pnl?'<span>P&L test 10 € <b>'+pnl+'</b></span>':'')+clv+'</div></article>'
+ }).join('')||'<div class="card muted">Aucun historique.</div>'
+}
+async function loadPerf(){
+ show('performance');
+ const x=await call('performance'),p=x.data||{},e=p.executable||{},clv=p.clv||{};
+ const erecord=(e.wins||0)+'-'+(e.losses||0)+'-'+(e.pushes||0);
+ execgrid.innerHTML=[
+  ['Exécutables',e.signals||0],
+  ['Résolus',e.settled||0],
+  ['Record W-L-P',erecord],
+  ['Réussite',e.hitRate==null?'—':pc(e.hitRate)],
+  ['P&L test 10 €',(Number(e.pnl||0)>=0?'+':'')+Number(e.pnl||0).toFixed(2)+' €'],
+  ['ROI',e.roi==null?'—':pc(e.roi)],
+  ['Drawdown max',Number(e.maxDrawdownEuros||0).toFixed(2)+' €'],
+  ['En attente',e.pending||0]
+ ].map(a=>'<div class="card metric"><span class="muted">'+a[0]+'</span><b>'+a[1]+'</b></div>').join('');
+
+ const target=Number(e.validationTarget||100),done=Number(e.graded||0),progress=Math.min(100,Math.round(Number(e.validationProgress||0)*100));
+ validationCard.innerHTML='<div class="historyHead"><b>Validation réelle</b><span class="pill">'+done+' / '+target+' paris résolus</span></div><div class="muted" style="margin-top:7px">Objectif minimum avant de juger le moteur : '+target+' signaux revérifiés et réglés.</div><div class="progress"><span style="width:'+progress+'%"></span></div>';
+
+ clvCard.innerHTML=clv.samples
+  ? '<b>CLV · '+Number(clv.samples)+' snapshot(s)</b><div class="betMeta"><span>CLV moyen <b class="'+(Number(clv.average)>=0?'good':'bad')+'">'+(Number(clv.average)>=0?'+':'')+pc(clv.average)+'</b></span><span>CLV positif <b>'+pc(clv.positiveRate)+'</b></span></div><div class="muted small" style="margin-top:8px">Comparaison de la cote exécutable avec une cote juste capturée au plus près du début disponible.</div>'
+  : '<b>CLV</b><div class="muted" style="margin-top:7px">Pas encore assez de snapshots proches de la clôture. Ils sont désormais collectés automatiquement.</div>';
+
+ const record=(p.wins||0)+'-'+(p.losses||0)+'-'+(p.pushes||0);
+ perfgrid.innerHTML=[
+  ['Détections',p.signals||0],
+  ['Résolus',p.settled||0],
+  ['Record W-L-P',record],
+  ['Réussite',p.hitRate==null?'—':pc(p.hitRate)],
+  ['P&L détection 10 €',(Number(p.pnl||0)>=0?'+':'')+Number(p.pnl||0).toFixed(2)+' €'],
+  ['ROI détection',p.roi==null?'—':pc(p.roi)],
+  ['Drawdown max',Number(p.maxDrawdownEuros||0).toFixed(2)+' €'],
+  ['En attente',p.pending||0]
+ ].map(a=>'<div class="card metric"><span class="muted">'+a[0]+'</span><b>'+a[1]+'</b></div>').join('')
+}
+
+loadAutoStatus();
+loadSignals();
+show('scan');
+setInterval(()=>{
+ loadAutoStatus();
+ loadSignals();
+ if(!document.getElementById('history').classList.contains('hide'))loadHistory(false);
+},60000);
+</script>
+</body>
+</html>
