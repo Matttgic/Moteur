@@ -458,6 +458,22 @@ function normalizeTournamentHint(value: string) {
     .replace(/\s+/g, " ");
 }
 
+function tournamentHintTokens(rawHint: string) {
+  const ignored = new Set(["wta", "atp", "open", "tennis", "women", "men"]);
+  const aliases: Record<string, string[]> = {
+    beijing: ["china"],
+    tokyo: ["japan"],
+  };
+
+  const base = normalizeTournamentHint(rawHint)
+    .split(" ")
+    .filter((token) => token.length >= 3 && !ignored.has(token));
+
+  return Array.from(
+    new Set(base.flatMap((token) => [token, ...(aliases[token] ?? [])])),
+  );
+}
+
 function sportHintScore(sport: TheOddsSport, tournamentHints: string[]) {
   if (!tournamentHints.length) return 0;
 
@@ -467,14 +483,7 @@ function sportHintScore(sport: TheOddsSport, tournamentHints: string[]) {
 
   let best = 0;
   for (const rawHint of tournamentHints) {
-    const tokens = normalizeTournamentHint(rawHint)
-      .split(" ")
-      .filter(
-        (token) =>
-          token.length >= 3 &&
-          !["wta", "atp", "open", "tennis", "women", "men"].includes(token),
-      );
-
+    const tokens = tournamentHintTokens(rawHint);
     const score = tokens.reduce(
       (sum, token) => sum + (sportText.includes(token) ? 1 : 0),
       0,
@@ -510,7 +519,48 @@ async function getTheOddsApiTennisOdds(
       typeof sport.key === "string" &&
       sport.key.startsWith(prefix),
   );
-  const sports = [...activeSports]
+
+  let sportsPool = activeSports;
+  let allSportsAvailable = 0;
+  let discoveryMode = "the_odds_api";
+  let discoveryQuota = sportsResponse.quota;
+
+  // /sports only returns in-season competitions by default. Around tournament
+  // transitions The Odds API can temporarily omit a supported event (for
+  // example Beijing / China Open). /sports?all=true is quota-free, so when the
+  // active list is empty we use it only to recover sport keys matching the
+  // tournaments already seen by Live Tennis.
+  if (!sportsPool.length && tournamentHints.length) {
+    const allSportsResponse = await theOddsApi<TheOddsSport[]>(
+      apiKey,
+      "sports",
+      { all: "true" },
+      3600,
+    );
+    discoveryQuota = allSportsResponse.quota;
+
+    const allTourSports = (Array.isArray(allSportsResponse.payload)
+      ? allSportsResponse.payload
+      : []
+    ).filter(
+      (sport) =>
+        sport.group?.toLowerCase() === "tennis" &&
+        typeof sport.key === "string" &&
+        sport.key.startsWith(prefix),
+    );
+
+    allSportsAvailable = allTourSports.length;
+    const hintedSports = allTourSports.filter(
+      (sport) => sportHintScore(sport, tournamentHints) > 0,
+    );
+
+    if (hintedSports.length) {
+      sportsPool = hintedSports;
+      discoveryMode = "the_odds_api_all_sports_fallback";
+    }
+  }
+
+  const sports = [...sportsPool]
     .sort(
       (a, b) =>
         sportHintScore(b, tournamentHints) - sportHintScore(a, tournamentHints),
@@ -533,9 +583,10 @@ async function getTheOddsApiTennisOdds(
         discoveryMode: "the_odds_api_no_active_sports",
         fallbackConfigured: true,
         activeSports: 0,
-        activeSportsAvailable: 0,
+        activeSportsAvailable: activeSports.length,
+        allSportsAvailable,
         oddsRequests: 0,
-        quota: sportsResponse.quota,
+        quota: discoveryQuota,
       },
       fixtures: [],
     };
@@ -569,10 +620,11 @@ async function getTheOddsApiTennisOdds(
       ],
       requestWindow: { from: window.from, to: window.to },
       providerDiagnostics: {
-        discoveryMode: "the_odds_api",
+        discoveryMode,
         fallbackConfigured: true,
         activeSports: sports.length,
         activeSportsAvailable: activeSports.length,
+        allSportsAvailable,
         oddsRequests: 0,
         supportedBookmakers: 0,
         quota: sportsResponse.quota,
@@ -582,7 +634,7 @@ async function getTheOddsApiTennisOdds(
   }
 
   const events: TheOddsEvent[] = [];
-  let quota = sportsResponse.quota;
+  let quota = discoveryQuota;
   let requests = 0;
 
   for (const sport of sports) {
@@ -661,10 +713,11 @@ async function getTheOddsApiTennisOdds(
     ],
     requestWindow: { from: window.from, to: window.to },
     providerDiagnostics: {
-      discoveryMode: "the_odds_api",
+      discoveryMode,
       fallbackConfigured: true,
       activeSports: sports.length,
       activeSportsAvailable: activeSports.length,
+      allSportsAvailable,
       oddsRequests: requests,
       quota,
     },
