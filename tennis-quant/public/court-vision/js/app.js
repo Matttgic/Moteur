@@ -1,4 +1,4 @@
-import { api, settings, localCallsToday, ApiError, initMode } from './api.js';
+import { api, settings, localCallsToday, ApiError, initMode, mainTourParams } from './api.js';
 import { analyse, renderMomentum, scoreLabel, modelOptions } from './momentum.js';
 import { winProbability } from './model.js';
 
@@ -11,7 +11,7 @@ const putText = (sel, text) => { const el = $(sel); if (el) el.textContent = tex
 
 // ---------- Utilitaires ----------
 
-const TOURS = [['', 'Tous'], ['atp', 'ATP'], ['wta', 'WTA'], ['challenger', 'Challenger'], ['itf', 'ITF']];
+const TOURS = [['', 'ATP + WTA'], ['atp', 'ATP'], ['wta', 'WTA']];
 const SURFACES = { hard: 'Dur', clay: 'Terre battue', grass: 'Gazon' };
 const TIERS = {
   grand_slam: 'Grand Chelem', atp_1000: 'Masters 1000', atp_500: 'ATP 500', atp_250: 'ATP 250',
@@ -424,7 +424,7 @@ async function resultsView() {
     <div id="list">${loading()}</div>`;
   $('#day').addEventListener('change', (e) => { location.hash = link(e.target.value); });
   try {
-    const res = await api.results({ from: day, to: day, tour, draw: 'singles', limit: 200 });
+    const res = await api.results({ from: day, to: day, ...mainTourParams(tour), draw: 'singles', limit: 200 });
     const ms = res.data || [];
     put('#list', ms.length ? groupByTournament(ms).map(([t, list]) => `
       <section class="group">

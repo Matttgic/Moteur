@@ -126,9 +126,31 @@ export async function get(path, params = {}, { ttl = 30, persist = false } = {})
   return data;
 }
 
+// Circuits principaux uniquement (pas de Challenger, WTA 125, ITF, juniors, épreuves par équipes).
+const ATP_TIERS = ['grand_slam', 'atp_finals', 'atp_1000', 'atp_500', 'atp_250', 'next_gen_finals'];
+const WTA_TIERS = ['grand_slam', 'wta_finals', 'wta_elite_trophy', 'wta_1000', 'wta_500', 'wta_250'];
+const TEAM_EVENTS = /davis cup|billie jean king|bjk cup|laver cup|hopman|united cup|\butr\b|exhibition|junior/i;
+
+// Paramètres de filtre : un seul appel pour ATP + WTA grâce au filtre ?tier=.
+export function mainTourParams(tour) {
+  if (tour === 'atp') return { tour: 'atp', tier: ATP_TIERS.join(',') };
+  if (tour === 'wta') return { tour: 'wta', tier: WTA_TIERS.join(',') };
+  return { tier: [...new Set([...ATP_TIERS, ...WTA_TIERS])].join(',') };
+}
+
+// /fixtures n'a pas de filtre de niveau : on interroge atp et/ou wta (jamais challenger/itf).
+async function mainTourFixtures(tour) {
+  const tours = tour === 'atp' || tour === 'wta' ? [tour] : ['atp', 'wta'];
+  const pages = await Promise.all(tours.map((t) => get('/fixtures', { tour: t, limit: 200 }, { ttl: 900 })));
+  const data = pages.flatMap((p) => p?.data || [])
+    .filter((f) => !TEAM_EVENTS.test(f.tournament || ''))
+    .sort((a, b) => String(a.start_time || a.event_date).localeCompare(String(b.start_time || b.event_date)));
+  return { data };
+}
+
 export const api = {
-  liveMatches: (tour) => get('/matches', { status: 'live', tour, limit: 200 }, { ttl: 25 }),
-  fixtures: (tour, offset = 0) => get('/fixtures', { tour, limit: 200, offset }, { ttl: 600 }),
+  liveMatches: (tour) => get('/matches', { status: 'live', ...mainTourParams(tour), limit: 200 }, { ttl: 25 }),
+  fixtures: (tour) => mainTourFixtures(tour),
   match: (id) => get(`/matches/${id}`, {}, { ttl: 20 }),
   score: (id) => get(`/matches/${id}/score`, {}, { ttl: 15 }),
   players: (search) => get('/players', { search, limit: 8 }, { ttl: 86400, persist: true }),

@@ -200,6 +200,7 @@ function list(data, params) {
 }
 
 const tourOk = (m, tour) => !tour || m.tour === tour;
+const tierOk = (m, tier) => !tier || String(tier).split(',').includes(m.tier);
 
 function finalScoreString(match, p1Perspective = true) {
   const g = match.score.games;
@@ -267,7 +268,7 @@ export async function demoFetch(path, params = {}) {
 
   if (path === '/matches') {
     const status = params.status || 'live';
-    return list(all.filter((v) => v.match.status === status && tourOk(v.match, params.tour)).map((v) => v.match), params);
+    return list(all.filter((v) => v.match.status === status && tourOk(v.match, params.tour) && tierOk(v.match, params.tier)).map((v) => v.match), params);
   }
   if (path === '/fixtures') {
     const r = rng(Math.floor(Date.now() / 86400000) + 7);
@@ -301,7 +302,7 @@ export async function demoFetch(path, params = {}) {
   if (path === '/h2h') return h2hFor(params.p1 || '', params.p2 || '');
   if (path === '/history/archive/career') return careerFor(params.name || '');
   if (path === '/history/matches') {
-    let rows = all.filter((v) => v.match.status === 'completed' && tourOk(v.match, params.tour));
+    let rows = all.filter((v) => v.match.status === 'completed' && tourOk(v.match, params.tour) && tierOk(v.match, params.tier));
     const pl = [].concat(params.player || []).map(Number);
     if (pl.length) rows = rows.filter((v) => pl.includes(v.match.players.p1.id) || pl.includes(v.match.players.p2.id));
     const data = rows.map((v) => ({ ...v.match, tape: { coverage: 'from_start', rows: v.rows.length, reconstructed_rows: 0, model_rows: v.rows.length, points_complete: true } }));
