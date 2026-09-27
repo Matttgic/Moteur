@@ -49,6 +49,32 @@ select {
   margin-bottom: 24px;
 }
 
+.heroSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.courtVisionLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.courtVisionLink:hover {
+  background: var(--accent);
+  color: var(--bg, #000);
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: var(--accent);
@@ -421,6 +447,10 @@ footer {
 
   .status {
     margin-top: 18px;
+  }
+
+  .heroSide {
+    align-items: flex-start;
   }
 
   .kpis,

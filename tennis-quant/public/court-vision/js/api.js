@@ -1,0 +1,142 @@
+// Client Live Tennis API — cache, suivi de quota, mode démo.
+import { demoFetch } from './demo.js';
+
+const BASE = 'https://api.livetennisapi.com/api/public/v1';
+const LS_KEY = 'cv.apiKey';
+const LS_CALLS = 'cv.calls';
+const LS_CODE = 'cv.accessCode';
+
+const memory = new Map();
+
+// Mode de fonctionnement :
+//  - 'proxy'  : la clé est côté serveur (variable d'environnement Vercel), appels via /api/lt
+//  - 'direct' : la clé est saisie dans Réglages et stockée dans ce navigateur
+//  - 'demo'   : aucune clé, données fictives
+let serverStatus = { configured: false, needsCode: false };
+// Adresse du relais serveur : <meta name="cv-proxy"> dans la page, sinon api/lt (déploiement autonome).
+const PROXY = document.querySelector('meta[name="cv-proxy"]')?.content || 'api/lt';
+
+export async function initMode() {
+  try {
+    const res = await fetch(`${PROXY}?path=__status`, { cache: 'no-store' });
+    if (res.ok) serverStatus = await res.json();
+  } catch { /* pas de fonction serveur (serveur local statique) */ }
+}
+
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch { /* stockage indisponible */ } }
+function lsDel(k) { try { localStorage.removeItem(k); } catch { /* idem */ } }
+
+export const settings = {
+  get apiKey() { return lsGet(LS_KEY) || ''; },
+  set apiKey(v) { v ? lsSet(LS_KEY, v.trim()) : lsDel(LS_KEY); memory.clear(); },
+  get accessCode() { return lsGet(LS_CODE) || ''; },
+  set accessCode(v) { v ? lsSet(LS_CODE, v.trim()) : lsDel(LS_CODE); memory.clear(); },
+  get server() { return serverStatus; },
+  get mode() { return this.apiKey ? 'direct' : serverStatus.configured ? 'proxy' : 'demo'; },
+  get demo() { return this.mode === 'demo'; },
+  get refreshSeconds() { return parseInt(lsGet('cv.refresh') || '60', 10); },
+  set refreshSeconds(v) { lsSet('cv.refresh', String(v)); },
+};
+
+export class ApiError extends Error {
+  constructor(status, body) {
+    const code = body?.error || `http_${status}`;
+    super(messageFor(status, code, body));
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function messageFor(status, code, body) {
+  if (code === 'upgrade_required') return 'Cette donnée demande un plan supérieur au Basic.';
+  if (code === 'access_code') return 'Code d\'accès requis ou incorrect : saisis-le dans Réglages.';
+  if (code === 'quota_reserved') return body?.message || 'Quota du jour presque épuisé : le reste est réservé au moteur.';
+  if (code === 'not_configured') return 'Aucune clé API trouvée dans les variables d\'environnement Vercel du projet.';
+  if (status === 401) return 'Clé API invalide ou absente. Vérifie-la dans Réglages.';
+  if (status === 429) return 'Limite de requêtes atteinte (60/min ou 1 000/jour). Réessaie plus tard.';
+  if (status === 404) return 'Introuvable.';
+  return body?.message || body?.detail || `Erreur API (${status}).`;
+}
+
+// Compteur local des appels réseau du jour (complément de /usage).
+function countCall() {
+  const today = new Date().toISOString().slice(0, 10);
+  let c = {};
+  try { c = JSON.parse(lsGet(LS_CALLS) || '{}'); } catch { /* reset */ }
+  if (c.day !== today) c = { day: today, n: 0 };
+  c.n += 1;
+  lsSet(LS_CALLS, JSON.stringify(c));
+  window.dispatchEvent(new CustomEvent('cv:call', { detail: c.n }));
+}
+
+export function localCallsToday() {
+  try {
+    const c = JSON.parse(lsGet(LS_CALLS) || '{}');
+    return c.day === new Date().toISOString().slice(0, 10) ? c.n : 0;
+  } catch { return 0; }
+}
+
+function buildQuery(params = {}) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null || v === '') continue;
+    if (Array.isArray(v)) v.forEach((x) => q.append(k, x));
+    else q.append(k, v);
+  }
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
+/**
+ * GET avec cache. ttl en secondes ; persist=true garde la réponse dans localStorage
+ * (données qui bougent peu : joueurs, H2H, matchs terminés).
+ */
+export async function get(path, params = {}, { ttl = 30, persist = false } = {}) {
+  const url = path + buildQuery(params);
+  const now = Date.now();
+  const hit = memory.get(url);
+  if (hit && hit.exp > now) return hit.data;
+  if (persist) {
+    try {
+      const stored = JSON.parse(lsGet('cv.c:' + url) || 'null');
+      if (stored && stored.exp > now) { memory.set(url, stored); return stored.data; }
+    } catch { /* ignore */ }
+  }
+
+  let data;
+  if (settings.demo) {
+    data = await demoFetch(path, params);
+  } else {
+    countCall();
+    const res = settings.mode === 'proxy'
+      ? await fetch(`${PROXY}${buildQuery({ path, ...params })}`, { headers: { 'X-Access-Code': settings.accessCode } })
+      : await fetch(BASE + url, { headers: { Authorization: `Bearer ${settings.apiKey}` } });
+    let body = null;
+    try { body = await res.json(); } catch { /* corps vide */ }
+    if (!res.ok) throw new ApiError(res.status, body);
+    data = body;
+  }
+  const entry = { exp: now + ttl * 1000, data };
+  memory.set(url, entry);
+  if (persist && !settings.demo) {
+    const json = JSON.stringify(entry);
+    if (json.length < 400_000) lsSet('cv.c:' + url, json);
+  }
+  return data;
+}
+
+export const api = {
+  liveMatches: (tour) => get('/matches', { status: 'live', tour, limit: 200 }, { ttl: 25 }),
+  fixtures: (tour, offset = 0) => get('/fixtures', { tour, limit: 200, offset }, { ttl: 600 }),
+  match: (id) => get(`/matches/${id}`, {}, { ttl: 20 }),
+  score: (id) => get(`/matches/${id}/score`, {}, { ttl: 15 }),
+  players: (search) => get('/players', { search, limit: 8 }, { ttl: 86400, persist: true }),
+  player: (id) => get(`/players/${id}`, {}, { ttl: 43200, persist: true }),
+  h2h: (p1, p2) => get('/h2h', { p1, p2 }, { ttl: 43200, persist: true }),
+  career: (name) => get('/history/archive/career', { name }, { ttl: 604800, persist: true }),
+  results: (params) => get('/history/matches', { limit: 50, ...params }, { ttl: 300 }),
+  recentForm: (playerId) => get('/history/matches', { player: playerId, draw: 'singles', limit: 10 }, { ttl: 3600, persist: true }),
+  tape: (id, live) => get(`/history/matches/${id}`, { sequence: 'clean' }, live ? { ttl: 60 } : { ttl: 604800, persist: true }),
+  usage: () => get('/usage', {}, { ttl: 120 }),
+};

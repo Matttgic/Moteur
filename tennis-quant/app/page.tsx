@@ -23,7 +23,12 @@ export default function Home() {
             Probabilité → cote juste → marché sans marge → edge → EV → qualité → décision.
           </p>
         </div>
-        <span className="status">ML VALIDÉ · ÉCONOMIE EN COLLECTE</span>
+        <div className="heroSide">
+          <span className="status">ML VALIDÉ · ÉCONOMIE EN COLLECTE</span>
+          <a className="courtVisionLink" href="/court-vision">
+            Court Vision · live &amp; momentum →
+          </a>
+        </div>
       </header>
 
       <section className="kpis" aria-label="Statut du moteur">

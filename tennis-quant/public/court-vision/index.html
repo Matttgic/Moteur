@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Court Vision</title>
+  <meta name="description" content="Scores en direct, avant-match et momentum point par point — propulsé par Live Tennis API.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23c6e03a'/><path d='M4 12c7 2 7 10 0 12M28 8c-7 2-7 14 0 16' stroke='%23fff' stroke-width='2' fill='none'/></svg>">
+  <meta name="cv-proxy" content="/api/court-vision">
+  <link rel="stylesheet" href="/court-vision/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/live"><span class="logo" aria-hidden="true"></span>Court Vision</a>
+    <nav class="nav">
+      <a href="#/live">En direct</a>
+      <a href="#/fixtures">Programme</a>
+      <a href="#/results">Résultats</a>
+      <a href="#/h2h">Face-à-face</a>
+      <a href="#/settings">Réglages</a>
+      <a href="/" class="nav-home">← Moteur</a>
+    </nav>
+    <span class="calls" id="calls"></span>
+  </header>
+  <div class="demo-banner" id="demo-banner" hidden>
+    Mode démo : données fictives. Ajoute ta clé Live Tennis API dans <a href="#/settings">Réglages</a> pour les vrais matchs.
+  </div>
+  <main id="view"></main>
+  <footer class="foot muted small">Données : Live Tennis API (plan Basic) · Probabilités de secours : modèle de Markov sur le score</footer>
+  <script type="module" src="/court-vision/js/app.js"></script>
+</body>
+</html>
