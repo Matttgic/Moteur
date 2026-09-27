@@ -246,3 +246,29 @@ input, select { font: inherit; padding: 9px 11px; border-radius: 8px; border: 1p
 }
 
 code { font-size: .85em; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+/* ---------- Pick du moteur ---------- */
+.pick { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface-2); }
+.pick-bet { border-color: var(--good); box-shadow: inset 3px 0 0 var(--good); }
+.pick-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.pick-verdict { font-weight: 700; margin-right: 4px; }
+.chip-soft { font-size: .76rem; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-2); }
+.chip-soft.warn, .warn-text { color: #9a6700; }
+.pick-line { margin: 4px 0 10px; font-size: .9rem; }
+.pick-table, .record { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.pick-table th, .pick-table td, .record th, .record td { padding: 6px 8px 6px 0; text-align: left; border-top: 1px solid var(--border); white-space: nowrap; }
+.pick-table thead th, .record thead th { border-top: 0; font-weight: 700; white-space: normal; }
+.pick-table tbody th, .record tbody th { white-space: normal; }
+.pick-table tbody th, .record tbody th { font-weight: 500; color: var(--muted); }
+.record tr.hl th, .record tr.hl td { background: var(--surface-2); font-weight: 700; }
+.table-scroll { overflow-x: auto; }
+.factors { margin-top: 10px; font-size: .88rem; }
+.factors summary { cursor: pointer; color: var(--text-2); }
+.factors ul { margin: 8px 0 0; padding-left: 4px; list-style: none; display: grid; gap: 4px; }
+
+/* ---------- Signaux ---------- */
+.signals { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.signals li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); font-size: .9rem; }
+.signals .sig-warn { background: rgba(237, 161, 0, .12); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chip-soft.warn, :root:not([data-theme="light"]) .warn-text { color: #f5c451; } }
+:root[data-theme="dark"] .chip-soft.warn, :root[data-theme="dark"] .warn-text { color: #f5c451; }

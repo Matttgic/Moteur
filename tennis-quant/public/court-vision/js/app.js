@@ -1,4 +1,5 @@
-import { api, settings, localCallsToday, ApiError, initMode, mainTourParams } from './api.js';
+import { api, settings, localCallsToday, ApiError, initMode, mainTourParams, findPick, picksEnabled } from './api.js';
+import { buildProfile, contextSignals, rate } from './profile.js';
 import { analyse, renderMomentum, scoreLabel, modelOptions } from './momentum.js';
 import { winProbability } from './model.js';
 
@@ -179,7 +180,7 @@ async function matchView(id) {
   };
 
   loadTape();
-  if (p1 && p2) renderPreMatch($('#pre'), p1, p2, m.surface); else put('#pre', '');
+  if (p1 && p2) renderPreMatch($('#pre'), p1, p2, m.surface, m.id); else put('#pre', '');
 
   if (live) {
     // Score : à chaque intervalle. Point par point : toutes les 3 minutes (économie de quota).
@@ -241,28 +242,131 @@ function swingsList(swings, names) {
 
 // ---------- Avant-match : H2H + forme + fiches ----------
 
-async function renderPreMatch(el, p1, p2, surface) {
-  el.innerHTML = loading('Face-à-face et forme récente…');
-  const [pa, pb, h2h, fa, fb] = await Promise.allSettled([
+async function renderPreMatch(el, p1, p2, surface, matchId) {
+  el.innerHTML = loading('Pick du moteur, face-à-face et forme…');
+  const [pa, pb, h2h, fa, fb, pick] = await Promise.allSettled([
     api.player(p1.id), api.player(p2.id),
     h2hLookup(p1.name, p2.name),
-    api.recentForm(p1.id), api.recentForm(p2.id),
+    api.playerHistory(p1.id), api.playerHistory(p2.id),
+    findPick({ matchId, n1: p1.name, n2: p2.name }),
   ]);
   const P1 = pa.value || p1, P2 = pb.value || p2;
   const names = [P1.name, P2.name];
+  const profA = fa.status === 'fulfilled' ? buildProfile(fa.value, P1.id) : null;
+  const profB = fb.status === 'fulfilled' ? buildProfile(fb.value, P2.id) : null;
+  const signals = contextSignals(profA, profB, names, {
+    surface, h2h: h2h.value, handA: P1.hand, handB: P2.hand,
+  });
   el.innerHTML = `
+    ${picksEnabled() ? `<h3>Pick du moteur</h3>${pickBlock(pick.value, names)}` : ''}
     <div class="players">
       ${playerCard(P1, 1, fa)}
       ${playerCard(P2, 2, fb)}
     </div>
+    <h3>Signaux de contexte</h3>
+    ${profA?.matches || profB?.matches ? signalsBlock(signals, names) : '<p class="muted">Historique des joueurs indisponible : pas de signaux calculables.</p>'}
+    <h3>Bilan récent</h3>
+    ${profA || profB ? recordTable(profA, profB, names, surface) : '<p class="muted">Historique indisponible.</p>'}
     <h3>Face-à-face</h3>
-    ${h2h.status === 'fulfilled' ? h2hBlock(h2h.value, names, surface) : errorBox(h2h.reason)}
-    <details class="career" data-n1="${esc(P1.name)}" data-n2="${esc(P2.name)}">
-      <summary>Carrière dans les archives 1968–2022 (2 requêtes)</summary>
-      <div class="career-body"></div>
-    </details>`;
-  const d = el.querySelector('details.career');
-  d.addEventListener('toggle', () => { if (d.open && !d.dataset.loaded) { d.dataset.loaded = '1'; loadCareer(d, names); } });
+    ${h2h.status === 'fulfilled' ? h2hBlock(h2h.value, names, surface) : errorBox(h2h.reason)}`;
+}
+
+const TIER_LABELS = { PREMIUM: 'Premium', VALUE: 'Value', LEAN: 'Léger', NO_BET: 'Pas de pari' };
+const GUARD_LABELS = {
+  odds_outlier: 'cote hors norme',
+  cross_book_price_outlier: 'cote très différente des autres bookmakers',
+  unconfirmed_extreme_edge: 'edge extrême non confirmé par Pinnacle',
+  fallback_longshot_without_sharp_confirmation: 'outsider sans confirmation Pinnacle (modèle simplifié)',
+};
+const num = (x, d = 2) => (typeof x === 'number' && Number.isFinite(x) ? x.toFixed(d) : '—');
+const signedPct = (x) => (typeof x === 'number' ? `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)} %` : '—');
+
+function pickBlock(res, names) {
+  if (!res?.row) {
+    const age = res?.snapshot?.ageMinutes;
+    return `<p class="muted">Le moteur n'a pas analysé ce match (hors programme du jour, joueur non reconnu ou cotes françaises indisponibles).${age != null ? ` Dernier calcul il y a ${Math.round(age)} min.` : ''}</p>`;
+  }
+  const { row, swapped, snapshot } = res;
+  const md = row.model || {}, mk = row.market || {}, dc = row.decision || {};
+  // Remet les valeurs dans notre ordre (joueur 1 / joueur 2).
+  const probs = swapped ? [md.probabilityB, md.probabilityA] : [md.probabilityA, md.probabilityB];
+  const odds = swapped ? [mk.oddsB, mk.oddsA] : [mk.oddsA, mk.oddsB];
+  const pickSide = dc.side ? ((dc.side === 'A') !== swapped ? 1 : 2) : null;
+  const q = dc.quality || {};
+  const bet = Boolean(dc.bet);
+  const reasons = (dc.guard?.reasons || []).map((r) => GUARD_LABELS[r] || r.replace(/_/g, ' '));
+  const f = md.features || {};
+  const sgn = swapped ? -1 : 1;
+  const factor = (label, v, fmt, min) => {
+    if (typeof v !== 'number' || !Number.isFinite(v) || Math.abs(v) < min) return '';
+    const who = v * sgn > 0 ? 0 : 1;
+    return `<li><i class="sw sw-p${who + 1}"></i>${label} : ${fmt(Math.abs(v))} pour ${esc(names[who])}</li>`;
+  };
+  const pts = (x) => `+${Math.round(x)} pts`;
+  const pp = (x) => `+${(x * 100).toFixed(1)} pts de %`;
+  const factors = [
+    factor('Elo', f.elo_diff, pts, 10),
+    factor('Elo surface', f.surface_elo_diff, pts, 10),
+    factor('Jeux de service gagnés', f.hold_diff, pp, 0.01),
+    factor('Breaks réalisés', f.break_diff, pp, 0.01),
+    factor('Forme (10 matchs)', f.form10_diff, pp, 0.05),
+  ].join('');
+  const load = typeof f.load14_diff === 'number' && Math.abs(f.load14_diff) >= 1
+    ? `<li class="muted">Matchs joués sur 14 jours : ${esc(names[f.load14_diff * sgn > 0 ? 0 : 1])} en a ${Math.abs(Math.round(f.load14_diff))} de plus</li>` : '';
+  return `<div class="pick ${bet ? 'pick-bet' : ''}">
+    <div class="pick-head">
+      <span class="pick-verdict">${bet ? '✅ Pari recommandé' : '⏸️ Pas de pari'}</span>
+      ${dc.tier && dc.tier !== 'NO_BET' ? `<span class="chip-soft">${esc(TIER_LABELS[dc.tier] || dc.tier)}</span>` : ''}
+      ${q.grade ? `<span class="chip-soft">Qualité ${esc(q.grade)} · ${Math.round(q.score)}/100</span>` : ''}
+      ${md.mode && md.mode !== 'full_logit' ? '<span class="chip-soft warn">Modèle simplifié (classement seul)</span>' : ''}
+    </div>
+    ${pickSide ? `<p class="pick-line">Côté analysé : <b>${esc(names[pickSide - 1])}</b> à <b>${num(dc.odds)}</b>${mk.bookmaker ? ` chez ${esc(mk.bookmaker)}` : ''} · cote juste ${num(dc.fairOdds)} · edge ${signedPct(dc.edge)} · EV ${signedPct(dc.ev)}</p>` : ''}
+    <div class="table-scroll"><table class="pick-table">
+      <thead><tr><th></th><th><i class="sw sw-p1"></i>${esc(names[0])}</th><th><i class="sw sw-p2"></i>${esc(names[1])}</th></tr></thead>
+      <tbody>
+        <tr><th>Probabilité moteur</th><td>${pct(probs[0])}</td><td>${pct(probs[1])}</td></tr>
+        <tr><th>Cote juste</th><td>${probs[0] ? num(1 / probs[0]) : '—'}</td><td>${probs[1] ? num(1 / probs[1]) : '—'}</td></tr>
+        <tr><th>Cote bookmaker</th><td>${num(odds[0])}</td><td>${num(odds[1])}</td></tr>
+      </tbody>
+    </table></div>
+    ${reasons.length ? `<p class="small warn-text">Garde-fous : ${esc(reasons.join(', '))}</p>` : ''}
+    ${factors || load ? `<details class="factors"><summary>Pourquoi le modèle penche de ce côté</summary><ul>${factors}${load}</ul></details>` : ''}
+    <p class="muted small">Instantané du moteur${snapshot?.ageMinutes != null ? ` calculé il y a ${Math.round(snapshot.ageMinutes)} min` : ''}${snapshot?.stale ? ' (ancien)' : ''}. Qualité = robustesse de l'exécution, pas une probabilité de gain.</p>
+  </div>`;
+}
+
+function signalsBlock(signals, names) {
+  if (!signals.length) return '<p class="muted">Rien de particulier : pas de fatigue, d\'écart marqué par surface ni d\'alerte d\'abandon.</p>';
+  const icon = { warn: '⚠️', info: 'ℹ️', good: '✅' };
+  return `<ul class="signals">${signals.map((x) => `<li class="sig-${x.level}"><span>${icon[x.level]}</span><span>${esc(x.text)}</span></li>`).join('')}</ul>
+    <p class="muted small">Contexte à croiser avec le pick, pas un conseil de pari à lui seul.</p>`;
+}
+
+function recordTable(a, b, names, surface) {
+  const cell = (x) => {
+    if (!x || !(x.w + x.l)) return '<td class="muted">—</td>';
+    return `<td>${x.w}-${x.l} <span class="muted small">(${pct(rate(x))})</span></td>`;
+  };
+  const row = (label, fa, fb, hl = false) => `<tr class="${hl ? 'hl' : ''}"><th>${label}</th>${cell(fa)}${cell(fb)}</tr>`;
+  const plain = (label, va, vb) => `<tr><th>${label}</th><td>${va ?? '—'}</td><td>${vb ?? '—'}</td></tr>`;
+  const since = (p) => (p?.since ? new Date(p.since).getFullYear() : null);
+  const rest = (p) => (p?.restDays == null ? '—' : p.restDays === 0 ? "aujourd'hui" : `il y a ${p.restDays} j`);
+  return `<div class="table-scroll"><table class="record">
+    <thead><tr><th></th><th><i class="sw sw-p1"></i>${esc(names[0])}</th><th><i class="sw sw-p2"></i>${esc(names[1])}</th></tr></thead>
+    <tbody>
+      ${row('Bilan', a?.record, b?.record)}
+      ${row('Dur', a?.bySurface.hard, b?.bySurface.hard, surface === 'hard')}
+      ${row('Terre battue', a?.bySurface.clay, b?.bySurface.clay, surface === 'clay')}
+      ${row('Gazon', a?.bySurface.grass, b?.bySurface.grass, surface === 'grass')}
+      ${row('Tie-breaks', a?.tiebreaks, b?.tiebreaks)}
+      ${row('Sets décisifs', a?.deciders, b?.deciders)}
+      ${plain('Victoires en sets secs', a?.straightWins, b?.straightWins)}
+      ${plain('Abandons (12 mois)', a?.retiredLast12m, b?.retiredLast12m)}
+      ${plain('Dernier match', rest(a), rest(b))}
+      ${plain('Sets joués (7 jours)', a?.sets7d, b?.sets7d)}
+      ${plain('Matchs (14 jours)', a?.matches14d, b?.matches14d)}
+    </tbody></table></div>
+    <p class="muted small">Sur les 200 derniers matchs terminés de chaque joueur (depuis ${since(a) || since(b) || 2023}), tous niveaux confondus, en simple.</p>`;
 }
 
 // Le H2H prend des fragments de nom : on essaie le nom complet, puis le nom de famille.
@@ -338,30 +442,6 @@ function h2hBlock(h, names, surface) {
     </table>`;
 }
 
-async function loadCareer(d, names) {
-  const body = d.querySelector('.career-body');
-  body.innerHTML = loading();
-  const [a, b] = await Promise.allSettled([api.career(names[0]), api.career(names[1])]);
-  const col = (r, k) => {
-    if (r.status !== 'fulfilled' || !r.value?.record) return `<div class="muted small">${esc(names[k])} : pas de carrière dans l'archive (joueur récent ou nom ambigu).</div>`;
-    const c = r.value, rec = c.record, sv = c.serve || {};
-    const wl = (x) => (x ? `${x.wins}-${x.losses} (${pct(ratio(x.wins, x.wins + x.losses))})` : '—');
-    return `<div class="pcard pcard-p${k + 1}">
-      <div class="pcard-name"><i class="sw sw-p${k + 1}"></i>${esc(c.player?.name || names[k])}</div>
-      <div class="muted small">${esc(c.span?.first?.slice(0, 4) || '')}–${esc(c.span?.last?.slice(0, 4) || '')}</div>
-      <table class="kv"><tbody>
-        <tr><th>Bilan</th><td>${wl(rec)}</td></tr>
-        <tr><th>Titres</th><td>${rec.titles ?? '—'}</td></tr>
-        ${Object.entries(rec.by_surface || {}).filter(([s]) => SURFACES[s]).map(([s, v]) => `<tr><th>${SURFACES[s]}</th><td>${wl(v)}</td></tr>`).join('')}
-        <tr><th>1re balle</th><td>${pct(sv.first_in_pct)}</td></tr>
-        <tr><th>Pts gagnés 1re</th><td>${pct(sv.first_won_pct)}</td></tr>
-        <tr><th>Pts gagnés 2e</th><td>${pct(sv.second_won_pct)}</td></tr>
-      </tbody></table>
-    </div>`;
-  };
-  body.innerHTML = `<div class="players">${col(a, 0)}${col(b, 1)}</div>`;
-}
-
 // ---------- Programme ----------
 
 async function fixturesView() {
@@ -395,7 +475,7 @@ async function fixturesView() {
 }
 
 function fixtureRow(f) {
-  const q = new URLSearchParams({ id1: f.player1_id ?? '', id2: f.player2_id ?? '', n1: f.player1_name ?? '', n2: f.player2_name ?? '', s: f.surface ?? '', t: f.tournament ?? '' });
+  const q = new URLSearchParams({ mid: f.id ?? '', id1: f.player1_id ?? '', id2: f.player2_id ?? '', n1: f.player1_name ?? '', n2: f.player2_name ?? '', s: f.surface ?? '', t: f.tournament ?? '' });
   const canPreview = f.player1_id && f.player2_id;
   const inner = `<span class="time">${f.start_time ? fmtTime(f.start_time) : '—'}</span>
     <span class="vs"><b>${esc(f.player1_name || '?')}</b> <span class="muted">vs</span> <b>${esc(f.player2_name || '?')}</b></span>
@@ -490,7 +570,7 @@ function previewView() {
       <p class="muted">${esc(p.t || '')} ${surfaceChip(p.s)}</p>
     </div></header>
     <section class="card" id="pre"></section>`;
-  renderPreMatch($('#pre'), { id: +p.id1, name: p.n1 }, { id: +p.id2, name: p.n2 }, p.s);
+  renderPreMatch($('#pre'), { id: +p.id1, name: p.n1 }, { id: +p.id2, name: p.n2 }, p.s, p.mid);
 }
 
 // ---------- Réglages ----------

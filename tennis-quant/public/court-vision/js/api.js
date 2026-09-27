@@ -1,5 +1,5 @@
 // Client Live Tennis API — cache, suivi de quota, mode démo.
-import { demoFetch } from './demo.js';
+import { demoFetch, demoPicks } from './demo.js';
 
 const BASE = 'https://api.livetennisapi.com/api/public/v1';
 const LS_KEY = 'cv.apiKey';
@@ -15,6 +15,8 @@ const memory = new Map();
 let serverStatus = { configured: false, needsCode: false };
 // Adresse du relais serveur : <meta name="cv-proxy"> dans la page, sinon api/lt (déploiement autonome).
 const PROXY = document.querySelector('meta[name="cv-proxy"]')?.content || 'api/lt';
+// Picks du moteur (lecture de l'instantané déjà calculé, aucun appel Live Tennis API).
+const PICKS = document.querySelector('meta[name="cv-picks"]')?.content || '';
 
 export async function initMode() {
   try {
@@ -156,9 +158,57 @@ export const api = {
   players: (search) => get('/players', { search, limit: 8 }, { ttl: 86400, persist: true }),
   player: (id) => get(`/players/${id}`, {}, { ttl: 43200, persist: true }),
   h2h: (p1, p2) => get('/h2h', { p1, p2 }, { ttl: 43200, persist: true }),
-  career: (name) => get('/history/archive/career', { name }, { ttl: 604800, persist: true }),
   results: (params) => get('/history/matches', { limit: 50, ...params }, { ttl: 300 }),
-  recentForm: (playerId) => get('/history/matches', { player: playerId, draw: 'singles', limit: 10 }, { ttl: 3600, persist: true }),
+  // 200 derniers matchs terminés (2023 → aujourd'hui) : forme, bilan, fatigue en un seul appel.
+  playerHistory: (playerId) => get('/history/matches', { player: playerId, draw: 'singles', limit: 200 }, { ttl: 43200, persist: true }),
   tape: (id, live) => get(`/history/matches/${id}`, { sequence: 'clean' }, live ? { ttl: 60 } : { ttl: 604800, persist: true }),
   usage: () => get('/usage', {}, { ttl: 120 }),
 };
+
+// ---------- Picks du moteur ----------
+
+const picksCache = new Map();
+
+export const picksEnabled = () => Boolean(PICKS) || settings.demo;
+
+async function loadPicks(tour) {
+  const hit = picksCache.get(tour);
+  if (hit && hit.exp > Date.now()) return hit.data;
+  let data;
+  if (settings.demo) data = demoPicks(tour);
+  else {
+    const res = await fetch(`${PICKS}?tour=${tour}`, { cache: 'no-store' });
+    data = res.ok ? await res.json() : null;
+  }
+  picksCache.set(tour, { exp: Date.now() + 10 * 60000, data });
+  return data;
+}
+
+const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const surname = (s) => norm(s).split(/[\s,.-]+/).filter((x) => x.length >= 3).sort((a, b) => b.length - a.length)[0] || norm(s);
+
+/**
+ * Cherche l'analyse du moteur pour un match (par id Live Tennis, sinon par noms).
+ * Retourne { row, swapped, snapshot } ; swapped = true si playerA du moteur = notre joueur 2.
+ */
+export async function findPick({ matchId, n1, n2 }) {
+  if (!picksEnabled()) return null;
+  const payloads = await Promise.all(['atp', 'wta'].map((t) => loadPicks(t).catch(() => null)));
+  for (const pl of payloads) {
+    const rows = pl?.allAnalyzed || [];
+    let row = matchId ? rows.find((r) => String(r.matchId) === String(matchId)) : null;
+    if (!row) {
+      const a = surname(n1), b = surname(n2);
+      row = rows.find((r) => {
+        const x = surname(r.playerA?.name), y = surname(r.playerB?.name);
+        return (x === a && y === b) || (x === b && y === a);
+      });
+    }
+    if (row) {
+      const swapped = surname(row.playerA?.name) !== surname(n1) && surname(row.playerB?.name) === surname(n1);
+      return { row, swapped, snapshot: pl.snapshot || null };
+    }
+  }
+  return { row: null, snapshot: payloads.find(Boolean)?.snapshot || null };
+}
+

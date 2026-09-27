@@ -21,7 +21,6 @@ const ALLOWED_PATHS = [
   /^\/h2h$/,
   /^\/history\/matches$/,
   /^\/history\/matches\/\d+$/,
-  /^\/history\/archive\/career$/,
   /^\/usage$/,
 ];
 

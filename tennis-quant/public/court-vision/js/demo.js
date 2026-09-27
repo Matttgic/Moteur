@@ -241,23 +241,90 @@ function h2hFor(n1, n2) {
   return { players: { p1: { name: a.name }, p2: { name: b.name } }, totals: { p1_wins: w1, p2_wins: w2, meetings: n, undecided: 0 }, by_surface: by, meetings };
 }
 
-function careerFor(name) {
-  const p = PLAYERS.find((x) => x.name.toLowerCase().includes(name.toLowerCase()));
-  if (!p) return null;
-  const r = rng(p.id);
-  const by_year = [2019, 2020, 2021, 2022].map((year) => ({ year, wins: 10 + Math.floor(r() * 40), losses: 5 + Math.floor(r() * 20) }));
-  const wins = by_year.reduce((s, y) => s + y.wins, 0), losses = by_year.reduce((s, y) => s + y.losses, 0);
-  const split = (w, l) => ({ wins: w, losses: l });
-  return {
-    player: { name: p.name }, span: { first: '2019-01-07', last: '2022-11-20' },
-    record: {
-      wins, losses, titles: Math.floor(r() * 6),
-      by_surface: { hard: split(Math.round(wins * 0.6), Math.round(losses * 0.55)), clay: split(Math.round(wins * 0.28), Math.round(losses * 0.3)), grass: split(Math.round(wins * 0.12), Math.round(losses * 0.15)) },
-      by_level: {},
-    },
-    by_year,
-    serve: { first_in_pct: 0.6 + r() * 0.08, first_won_pct: 0.7 + r() * 0.08, second_won_pct: 0.5 + r() * 0.06, bp_saved_pct: 0.6 + r() * 0.08, aces: 1200, double_faults: 400 },
-  };
+function demoFixtures() {
+  const r = rng(Math.floor(Date.now() / 86400000) + 7);
+  const out = [];
+  for (let i = 0; i < 16; i++) {
+    const t = TOURNAMENTS[i % TOURNAMENTS.length];
+    const [a, b] = pairFor(r, t.tour);
+    const start = new Date(Date.now() + (1 + i * 1.5) * 3600000);
+    start.setMinutes(0, 0, 0);
+    out.push({
+      id: 980000 + i, event_date: start.toISOString().slice(0, 10), start_time: start.toISOString(),
+      player1_id: a.id, player2_id: b.id, player1_name: a.name, player2_name: b.name,
+      tour: t.tour, tournament: t.name, round: ROUNDS[i % 4], surface: t.surface, status: 'scheduled',
+    });
+  }
+  return out;
+}
+
+// Faux instantané du moteur (même forme que /api/selections/quality-today).
+export function demoPicks(tour) {
+  const r = rng(Math.floor(Date.now() / 86400000) + 11);
+  const margin = 1.06;
+  const rows = demoFixtures().filter((f) => f.tour === tour).map((f, i) => {
+    const a = byId.get(f.player1_id), b = byId.get(f.player2_id);
+    const pa = Math.min(0.9, Math.max(0.1, 0.5 + (b.ranking - a.ranking) / 60 + (r() - 0.5) * 0.1));
+    const oddsA = i % 4 === 1 ? +(1 / (pa * 0.86)).toFixed(2) : +(1 / ((pa - 0.04 + r() * 0.08) * margin)).toFixed(2);
+    const oddsB = +(1 / ((1 - pa + 0.02) * margin)).toFixed(2);
+    const side = pa * oddsA >= (1 - pa) * oddsB ? 'A' : 'B';
+    const prob = side === 'A' ? pa : 1 - pa;
+    const odds = side === 'A' ? oddsA : oddsB;
+    const edge = prob - 1 / odds / margin;
+    const ev = prob * odds - 1;
+    const tier = edge >= 0.08 && ev >= 0.05 ? 'PREMIUM' : edge >= 0.06 && ev >= 0.03 ? 'VALUE' : edge >= 0.03 && ev > 0 ? 'LEAN' : 'NO_BET';
+    const score = i % 4 === 1 ? 84 : Math.round(55 + r() * 40);
+    return {
+      matchId: f.id, tournament: f.tournament, surface: f.surface, scheduledTime: f.start_time,
+      playerA: { name: a.name, ranking: a.ranking }, playerB: { name: b.name, ranking: b.ranking },
+      model: {
+        mode: 'full_logit', probabilityA: pa, probabilityB: 1 - pa, fairOddsA: 1 / pa, fairOddsB: 1 / (1 - pa), quality: 0.8,
+        features: {
+          elo_diff: (b.ranking - a.ranking) * 6, surface_elo_diff: (b.ranking - a.ranking) * 5,
+          hold_diff: (r() - 0.5) * 0.08, break_diff: (r() - 0.5) * 0.06, form10_diff: (r() - 0.5) * 0.4,
+          load14_diff: Math.round((r() - 0.5) * 4),
+        },
+      },
+      market: { bookmaker: ['Winamax', 'Betclic', 'Unibet'][i % 3], oddsA, oddsB, sourceCount: 4 },
+      decision: {
+        side, player: side === 'A' ? a.name : b.name, odds, modelProbability: prob, edge, ev, fairOdds: 1 / prob, tier,
+        bet: (tier === 'PREMIUM' || tier === 'VALUE') && score >= 70,
+        guard: { blocked: false, reasons: i % 5 === 4 ? ['cross_book_price_outlier'] : [] },
+        quality: { score, grade: score >= 90 ? 'A+' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : 'D', actionable: score >= 70 },
+      },
+    };
+  });
+  return { allAnalyzed: rows, snapshot: { generatedAt: new Date(Date.now() - 42 * 60000).toISOString(), ageMinutes: 42, stale: false } };
+}
+
+// Historique synthétique d'un joueur : 80 matchs terminés sur ~2 ans.
+const HISTORY = new Map();
+function playerHistory(pid) {
+  if (HISTORY.has(pid)) return HISTORY.get(pid);
+  const me = byId.get(pid);
+  if (!me) return [];
+  const r = rng(pid * 7919);
+  const out = [];
+  let t = Date.now() - (1 + Math.floor(r() * 4)) * 86400000;
+  for (let i = 0; i < 80; i++) {
+    const pool = PLAYERS.filter((p) => p.tour === me.tour && p.id !== pid);
+    const opp = pool[Math.floor(r() * pool.length)];
+    const surface = ['hard', 'hard', 'clay', 'grass'][Math.floor(r() * 4)];
+    const rows = simulate(pid * 1000 + i, serveStrength(me), serveStrength(opp), 3, t);
+    const flip = r() < 0.5;
+    const tt = TOURNAMENTS[i % 3];
+    const m = buildMatch(990000 + pid * 100 + i, flip ? opp.id : pid, flip ? pid : opp.id, { ...tt, surface }, 'completed', rows, t, ROUNDS[i % 4]);
+    if (flip) {
+      // La simulation est faite du point de vue du joueur : on inverse pour le mettre en p2.
+      const g = m.score.games;
+      m.score = { ...m.score, games: [g[1], g[0]], sets: [m.score.sets[1], m.score.sets[0]] };
+      m.winner = 3 - m.winner;
+    }
+    out.push({ ...m, tape: { coverage: 'from_start', rows: rows.length, model_rows: rows.length } });
+    t -= (i % 4 === 3 ? 9 : 2) * 86400000;
+  }
+  HISTORY.set(pid, out);
+  return out;
 }
 
 export async function demoFetch(path, params = {}) {
@@ -271,20 +338,7 @@ export async function demoFetch(path, params = {}) {
     return list(all.filter((v) => v.match.status === status && tourOk(v.match, params.tour) && tierOk(v.match, params.tier)).map((v) => v.match), params);
   }
   if (path === '/fixtures') {
-    const r = rng(Math.floor(Date.now() / 86400000) + 7);
-    const out = [];
-    for (let i = 0; i < 16; i++) {
-      const t = TOURNAMENTS[i % TOURNAMENTS.length];
-      const [a, b] = pairFor(r, t.tour);
-      const start = new Date(Date.now() + (1 + i * 1.5) * 3600000);
-      start.setMinutes(0, 0, 0);
-      out.push({
-        id: 980000 + i, event_date: start.toISOString().slice(0, 10), start_time: start.toISOString(),
-        player1_id: a.id, player2_id: b.id, player1_name: a.name, player2_name: b.name,
-        tour: t.tour, tournament: t.name, round: ROUNDS[i % 4], surface: t.surface, status: 'scheduled',
-      });
-    }
-    return list(out.filter((f) => !params.tour || f.tour === params.tour), params);
+    return list(demoFixtures().filter((f) => !params.tour || f.tour === params.tour), params);
   }
   if ((m = path.match(/^\/matches\/(\d+)\/score$/))) {
     const v = view(+m[1]);
@@ -300,11 +354,10 @@ export async function demoFetch(path, params = {}) {
     return p && { ...p, stats: { ratings: { elo: Math.round(2300 - p.ranking * 8) }, ratings_as_of: new Date().toISOString().slice(0, 10), season: null } };
   }
   if (path === '/h2h') return h2hFor(params.p1 || '', params.p2 || '');
-  if (path === '/history/archive/career') return careerFor(params.name || '');
   if (path === '/history/matches') {
     let rows = all.filter((v) => v.match.status === 'completed' && tourOk(v.match, params.tour) && tierOk(v.match, params.tier));
     const pl = [].concat(params.player || []).map(Number);
-    if (pl.length) rows = rows.filter((v) => pl.includes(v.match.players.p1.id) || pl.includes(v.match.players.p2.id));
+    if (pl.length) return list(pl.flatMap(playerHistory), params);
     const data = rows.map((v) => ({ ...v.match, tape: { coverage: 'from_start', rows: v.rows.length, reconstructed_rows: 0, model_rows: v.rows.length, points_complete: true } }));
     return list(data, params);
   }
