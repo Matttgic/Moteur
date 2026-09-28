@@ -82,6 +82,8 @@ type EconomicSummary = {
 
 type HistoryFilter = "ALL" | "PENDING" | "WIN" | "LOSS" | "VOID";
 
+const HISTORY_PAGE_SIZE = 5;
+
 const pct = (value: number | null) =>
   value == null ? "—" : `${(Number(value) * 100).toFixed(1)}%`;
 
@@ -135,6 +137,8 @@ export default function EconomicValidation() {
   const [data, setData] = useState<EconomicSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("ALL");
+  const [historyVisibleCount, setHistoryVisibleCount] = useState(HISTORY_PAGE_SIZE);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -167,6 +171,11 @@ export default function EconomicValidation() {
     }
     return history.filter((row) => row.result === historyFilter);
   }, [history, historyFilter]);
+
+  const visibleHistory = useMemo(
+    () => filteredHistory.slice(0, historyVisibleCount),
+    [filteredHistory, historyVisibleCount],
+  );
 
   const historyCounts = useMemo(
     () => ({
@@ -313,7 +322,11 @@ export default function EconomicValidation() {
               type="button"
               key={key}
               className={historyFilter === key ? "historyFilter active" : "historyFilter"}
-              onClick={() => setHistoryFilter(key)}
+              onClick={() => {
+                setHistoryFilter(key);
+                setHistoryVisibleCount(HISTORY_PAGE_SIZE);
+                setExpandedHistoryId(null);
+              }}
             >
               {label} <span>{historyCounts[key]}</span>
             </button>
@@ -321,82 +334,115 @@ export default function EconomicValidation() {
         </div>
 
         {filteredHistory.length ? (
-          <div className="historyGrid">
-            {filteredHistory.map((row) => {
-              const status = historyStatus(row);
-              const profitClass =
-                row.profitUnits == null
-                  ? ""
-                  : Number(row.profitUnits) >= 0
-                    ? "positive"
-                    : "negative";
+          <>
+            <div className="historyGrid">
+              {visibleHistory.map((row) => {
+                const status = historyStatus(row);
+                const profitClass =
+                  row.profitUnits == null
+                    ? ""
+                    : Number(row.profitUnits) >= 0
+                      ? "positive"
+                      : "negative";
 
-              return (
-                <article className="historyCard" key={row.id}>
-                  <div className="historyTop">
-                    <div>
-                      <span className="pill">{row.tour}</span>
-                      <span className="historyDate">{formatDate(row.scheduledAt)}</span>
-                    </div>
-                    <span className={status.className}>{status.label}</span>
-                  </div>
-
-                  <p className="historyTournament">{row.tournament ?? "Tournoi"}</p>
-
-                  <h4>{row.selectedPlayer} <span>@{Number(row.odds).toFixed(2)}</span></h4>
-                  <p className="historyMatch">{row.playerA} vs {row.playerB}</p>
-
-                  <div className="historyMetrics">
-                    <div>
-                      <span>Book</span>
-                      <strong>{row.bookmaker}</strong>
-                    </div>
-                    <div>
-                      <span>Quality</span>
-                      <strong>{quality(row.qualityScore, row.qualityGrade)}</strong>
-                    </div>
-                    <div>
-                      <span>Proba modèle</span>
-                      <strong>{pct(row.modelProbability)}</strong>
-                    </div>
-                    <div>
-                      <span>Edge</span>
-                      <strong>{pct(row.edge)}</strong>
-                    </div>
-                    <div>
-                      <span>EV</span>
-                      <strong>{pct(row.ev)}</strong>
-                    </div>
-                    <div>
-                      <span>Mise</span>
-                      <strong>{decimal(row.stakeUnits)}u</strong>
-                    </div>
-                    <div>
-                      <span>CLV</span>
-                      <strong>{pct(row.clv)}</strong>
-                    </div>
-                  </div>
-
-                  <div className="historyBottom">
-                    <div>
-                      <span>{row.tier}</span>
-                      <span>{row.modelMode === "full_logit" ? "FULL ML" : row.modelMode}</span>
-                      {row.qualityGrade ? <span>QUALITY {row.qualityGrade}</span> : null}
-                      {row.closingOdds != null ? (
-                        <span>Clôture {Number(row.closingOdds).toFixed(2)}</span>
-                      ) : null}
+                return (
+                  <article className="historyCard" key={row.id}>
+                    <div className="historyTop">
+                      <div>
+                        <span className="pill">{row.tour}</span>
+                        <span className="historyDate">{formatDate(row.scheduledAt)}</span>
+                      </div>
+                      <span className={status.className}>{status.label}</span>
                     </div>
 
-                    <strong className={profitClass}>
-                      {row.profitUnits == null
-                        ? "Résultat en attente"
-                        : units(Number(row.profitUnits))}
-                    </strong>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                    <p className="historyTournament">{row.tournament ?? "Tournoi"}</p>
+                    <h4>{row.selectedPlayer} <span>@{Number(row.odds).toFixed(2)}</span></h4>
+                    <p className="historyMatch">{row.playerA} vs {row.playerB}</p>
+
+                    <div className="historyCompactActions">
+                      <strong className={profitClass}>
+                        {row.profitUnits == null
+                          ? "Résultat en attente"
+                          : units(Number(row.profitUnits))}
+                      </strong>
+                      <button
+                        type="button"
+                        className="historyDetailsToggle"
+                        aria-expanded={expandedHistoryId === row.id}
+                        onClick={() =>
+                          setExpandedHistoryId((current) =>
+                            current === row.id ? null : row.id,
+                          )
+                        }
+                      >
+                        {expandedHistoryId === row.id ? "Masquer les détails" : "Voir les détails"}
+                      </button>
+                    </div>
+
+                    {expandedHistoryId === row.id ? (
+                      <>
+                        <div className="historyMetrics">
+                          <div><span>Book</span><strong>{row.bookmaker}</strong></div>
+                          <div><span>Quality</span><strong>{quality(row.qualityScore, row.qualityGrade)}</strong></div>
+                          <div><span>Proba modèle</span><strong>{pct(row.modelProbability)}</strong></div>
+                          <div><span>Edge</span><strong>{pct(row.edge)}</strong></div>
+                          <div><span>EV</span><strong>{pct(row.ev)}</strong></div>
+                          <div><span>Mise</span><strong>{decimal(row.stakeUnits)}u</strong></div>
+                          <div><span>CLV</span><strong>{pct(row.clv)}</strong></div>
+                        </div>
+
+                        <div className="historyBottom">
+                          <div>
+                            <span>{row.tier}</span>
+                            <span>{row.modelMode === "full_logit" ? "FULL ML" : row.modelMode}</span>
+                            {row.qualityGrade ? <span>QUALITY {row.qualityGrade}</span> : null}
+                            {row.closingOdds != null ? (
+                              <span>Clôture {Number(row.closingOdds).toFixed(2)}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+
+            {filteredHistory.length > HISTORY_PAGE_SIZE ? (
+              <div className="historyPagination">
+                <span>
+                  {Math.min(historyVisibleCount, filteredHistory.length)} / {filteredHistory.length} affichés
+                </span>
+                <div>
+                  {historyVisibleCount < filteredHistory.length ? (
+                    <button
+                      type="button"
+                      className="historyPageButton"
+                      onClick={() =>
+                        setHistoryVisibleCount((count) =>
+                          Math.min(count + HISTORY_PAGE_SIZE, filteredHistory.length),
+                        )
+                      }
+                    >
+                      Afficher 5 de plus
+                    </button>
+                  ) : null}
+                  {historyVisibleCount > HISTORY_PAGE_SIZE ? (
+                    <button
+                      type="button"
+                      className="historyPageButton secondary"
+                      onClick={() => {
+                        setHistoryVisibleCount(HISTORY_PAGE_SIZE);
+                        setExpandedHistoryId(null);
+                      }}
+                    >
+                      Réduire
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </>
         ) : (
           <p className="historyEmpty">
             Aucun pari dans ce filtre pour le moment.
