@@ -1221,3 +1221,70 @@ footer {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* compact-economic-history */
+.historyCompactActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.historyDetailsToggle,
+.historyPageButton {
+  border: 1px solid rgba(94, 234, 212, 0.3);
+  background: rgba(94, 234, 212, 0.08);
+  color: inherit;
+  border-radius: 12px;
+  padding: 9px 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.historyPageButton.secondary {
+  background: transparent;
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.historyPagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 0 0;
+}
+
+.historyPagination > span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.historyPagination > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .historyCompactActions,
+  .historyPagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .historyDetailsToggle,
+  .historyPageButton {
+    width: 100%;
+  }
+
+  .historyPagination > div {
+    width: 100%;
+  }
+}
