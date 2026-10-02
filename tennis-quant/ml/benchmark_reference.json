@@ -1,5 +1,5 @@
 {
-  "validated_at": "2026-09-21",
+  "validated_at": "2026-10-02",
   "protocol": {
     "history_start_year": 2005,
     "history_end_year": 2026,
@@ -12,18 +12,18 @@
   "ATP": {
     "champion": "full_logit",
     "test_n": 10514,
-    "log_loss": 0.6189421338712963,
-    "brier_score": 0.21545884548052083,
-    "accuracy": 0.6500856001521781,
-    "ece_10": 0.009563552978526835
+    "log_loss": 0.6132309638940471,
+    "brier_score": 0.21303385715246057,
+    "accuracy": 0.6505611565531672,
+    "ece_10": 0.010328108927028252
   },
   "WTA": {
     "champion": "full_logit",
     "test_n": 4485,
-    "log_loss": 0.6134117991289917,
-    "brier_score": 0.21260395436693225,
-    "accuracy": 0.6606465997770345,
-    "ece_10": 0.010751161835019306
+    "log_loss": 0.6065472728124717,
+    "brier_score": 0.20958747681929424,
+    "accuracy": 0.6717948717948717,
+    "ece_10": 0.01627668218839708
   },
   "betting_profitability": {
     "validated": false,
