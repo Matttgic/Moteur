@@ -510,15 +510,17 @@ export function applyCompletedMatchStateUpdate(
 ) {
   const surface = surfaceKey(surfaceValue);
 
-  const globalExpected = expectedScore(winner.elo, loser.elo);
-  winner.elo += 28 * (1 - globalExpected);
-  loser.elo += 28 * (0 - globalExpected);
+  // Somme nulle : le perdant cède exactement ce que gagne le vainqueur
+  // (son score attendu est 1 - E(vainqueur)). Miroir de ml/features.py.
+  const globalDelta = 28 * (1 - expectedScore(winner.elo, loser.elo));
+  winner.elo += globalDelta;
+  loser.elo -= globalDelta;
 
   const winnerSurface = surfaceElo(winner, surface);
   const loserSurface = surfaceElo(loser, surface);
-  const surfaceExpected = expectedScore(winnerSurface, loserSurface);
-  setSurfaceElo(winner, surface, winnerSurface + 32 * (1 - surfaceExpected));
-  setSurfaceElo(loser, surface, loserSurface + 32 * (0 - surfaceExpected));
+  const surfaceDelta = 32 * (1 - expectedScore(winnerSurface, loserSurface));
+  setSurfaceElo(winner, surface, winnerSurface + surfaceDelta);
+  setSurfaceElo(loser, surface, loserSurface - surfaceDelta);
 
   winner.recentResults = [...winner.recentResults, 1].slice(-10);
   loser.recentResults = [...loser.recentResults, 0].slice(-10);
