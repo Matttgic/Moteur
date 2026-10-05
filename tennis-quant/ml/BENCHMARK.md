@@ -1,6 +1,6 @@
 # Tennis Quant Engine — Benchmark de référence
 
-Date de validation CI : 2026-09-21
+Date de validation : 2026-10-02 (Elo à somme nulle, voir « Historique »)
 
 ## Protocole
 
@@ -18,14 +18,14 @@ Date de validation CI : 2026-09-21
 
 | Modèle | Log Loss | Brier | Accuracy | ECE-10 |
 |---|---:|---:|---:|---:|
-| Ranking seul | 0.631818 | 0.221020 | 63.67% | 0.00853 |
-| Elo seul | 0.666571 | 0.237005 | 59.18% | 0.01692 |
-| **Logistique complète** | **0.618942** | **0.215459** | **65.01%** | **0.00956** |
-| HistGradientBoosting | 0.619241 | 0.215538 | 64.83% | 0.01084 |
+| Ranking seul | 0.631818 | 0.221020 | 63.67% | **0.00853** |
+| Elo seul | 0.620325 | 0.216178 | 64.21% | 0.01120 |
+| **Logistique complète** | **0.613231** | 0.213034 | 65.06% | 0.01033 |
+| HistGradientBoosting | 0.613342 | **0.212956** | **65.40%** | 0.01624 |
 
 **Champion ATP : full_logit**
 
-La logistique complète améliore nettement le ranking seul en log loss et Brier Score. Le gradient boosting est extrêmement proche, mais ne le bat pas sur les métriques probabilistes prioritaires.
+La logistique complète améliore nettement le ranking seul en log loss et Brier Score. Le gradient boosting a une accuracy et un Brier très légèrement supérieurs, mais une log loss et une calibration moins bonnes : la logistique reste le champion.
 
 ## WTA
 
@@ -33,14 +33,14 @@ La logistique complète améliore nettement le ranking seul en log loss et Brier
 
 | Modèle | Log Loss | Brier | Accuracy | ECE-10 |
 |---|---:|---:|---:|---:|
-| Ranking seul | 0.625922 | 0.217873 | 65.24% | 0.01250 |
-| Elo seul | 0.667941 | 0.237147 | 59.87% | 0.02130 |
-| **Logistique complète** | **0.613412** | **0.212604** | 66.06% | **0.01075** |
-| HistGradientBoosting | 0.615539 | 0.213350 | **66.58%** | 0.01348 |
+| Ranking seul | 0.625922 | 0.217873 | 65.24% | **0.01250** |
+| Elo seul | 0.613415 | 0.212733 | 65.93% | 0.01677 |
+| **Logistique complète** | **0.606547** | **0.209587** | **67.18%** | 0.01628 |
+| HistGradientBoosting | 0.609242 | 0.210583 | 66.60% | 0.01508 |
 
 **Champion WTA : full_logit**
 
-Le gradient boosting gagne légèrement en accuracy brute, mais la logistique complète est meilleure en log loss, Brier et calibration. Elle reste donc le choix de production de la V1.
+La logistique complète est la meilleure en log loss, Brier et accuracy. Son ECE est un peu plus élevé que celui du ranking seul, mais reste sous 2 %.
 
 ## Interprétation
 
@@ -54,3 +54,27 @@ Aucun ROI, CLV ou profit n'est revendiqué sans :
 5. suivi du closing line value.
 
 Le prochain jalon est le backtest économique sur cotes autorisées.
+
+## Historique
+
+### 2026-10-02 — Elo à somme nulle
+
+La mise à jour Elo du perdant utilisait le score attendu du **vainqueur** (`perdant += K × (0 − E_vainqueur)`)
+au lieu du sien (`1 − E_vainqueur`). L'Elo n'était donc pas à somme nulle : après un favori victorieux,
+le perdant perdait presque K points ; après une surprise, le favori battu ne perdait presque rien.
+Conséquence : l'Elo seul faisait moins bien que le simple classement (59,2 % contre 63,7 % ATP).
+
+| Log loss hors échantillon (full_logit) | Avant | Après |
+|---|---:|---:|
+| ATP | 0.618942 | 0.613231 |
+| WTA | 0.613412 | 0.606547 |
+
+| Elo seul | Avant | Après |
+|---|---:|---:|
+| ATP accuracy | 59.18 % | 64.21 % |
+| WTA accuracy | 59.87 % | 65.93 % |
+
+Corrigé à l'identique dans `ml/tennis_quant_ml/features.py` (entraînement) et `lib/player-state.ts`
+(mise à jour live). Spécifications du modèle (`lib/model-specs/*-full.json`) et états de départ
+(`generated/`) régénérés. Les états joueurs déjà en base Supabase ont été calculés avec l'ancienne
+règle : voir `PRODUCTION.md`.

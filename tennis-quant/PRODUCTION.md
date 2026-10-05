@@ -67,18 +67,32 @@ If this key is not configured, the system remains operational with OddsPapi but 
 ### ATP
 
 - OOS matches: 10,514
-- Accuracy: 65.01%
-- Log Loss: 0.61894
-- Brier: 0.21546
-- ECE-10: 0.00956
+- Accuracy: 65.06%
+- Log Loss: 0.61323
+- Brier: 0.21303
+- ECE-10: 0.01033
 
 ### WTA
 
 - OOS matches: 4,485
-- Accuracy: 66.06%
-- Log Loss: 0.61341
-- Brier: 0.21260
-- ECE-10: 0.01075
+- Accuracy: 67.18%
+- Log Loss: 0.60655
+- Brier: 0.20959
+- ECE-10: 0.01628
+
+### Player-state migration after the zero-sum Elo fix (2026-10-02)
+
+The loser's Elo update previously used the winner's expected score, so ratings were not zero-sum
+(see `ml/BENCHMARK.md`, « Historique »). The training code, the live update in `lib/player-state.ts`,
+the model specifications and `generated/*-player-state-seed.json` are fixed together.
+
+Player states already stored in `tennis_player_states` were built with the old rule. Deploying the
+new model specifications on top of them mixes two Elo scales. Before (or together with) the deploy:
+
+1. reload `tennis_player_states` from the regenerated `generated/{atp,wta}-player-state-seed.json`
+   (state as of 2026-05-25);
+2. replay the completed matches stored in `tennis_matches` since 2026-05-26, in `completed_at` order,
+   through `applyCompletedMatchStateUpdate`.
 
 The API reads the `trained_through` field from each committed model specification. It must not hard-code a training date.
 
