@@ -1,0 +1,3 @@
+import {NextResponse} from "next/server";import {adminDb} from "@/lib/supabase-admin";
+export const dynamic="force-dynamic";
+export async function GET(){const db=adminDb();if(!db)return NextResponse.json({status:"not_configured",rows:[]});const {data,error}=await db.from("opportunities").select("id,event_name,sport_key,market_key,selection,point,bookmaker_key,offered_odds,fair_odds,edge,confidence,status,detected_at").order("detected_at",{ascending:false}).limit(200);if(error)return NextResponse.json({status:"error",error:error.message,rows:[]},{status:500});return NextResponse.json({status:"ok",rows:data??[]})}
