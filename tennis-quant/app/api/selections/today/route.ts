@@ -27,6 +27,12 @@ import {
   getSelectionSnapshot,
   saveSelectionSnapshot,
 } from "@/lib/selection-snapshots";
+import {
+  MARKET_ANCHOR_STRENGTH,
+  calibrationGuard,
+  lineMovementPct,
+  marketAnchorProbability,
+} from "@/lib/live-policy";
 
 export const runtime = "nodejs";
 
@@ -197,6 +203,41 @@ function median(values: number[]) {
     : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
+type PreviousAnalyzedRow = {
+  matchId?: number | string | null;
+  playerA?: { name?: string };
+  playerB?: { name?: string };
+  market?: { oddsA?: number; oddsB?: number };
+};
+
+function previousOddsForSide(
+  rows: PreviousAnalyzedRow[],
+  live: LiveMatch,
+  side: "A" | "B",
+) {
+  const p1 = live.players?.p1?.name;
+  const p2 = live.players?.p2?.name;
+  if (!p1 || !p2) return null;
+
+  const byId =
+    live.id == null
+      ? null
+      : rows.find((row) => String(row.matchId ?? "") === String(live.id));
+
+  const previous =
+    byId ??
+    rows.find((row) => {
+      const a = row.playerA?.name;
+      const b = row.playerB?.name;
+      return Boolean(a && b && pairKey(a, b) === pairKey(p1, p2));
+    });
+
+  const odds = side === "A" ? previous?.market?.oddsA : previous?.market?.oddsB;
+  return typeof odds === "number" && Number.isFinite(odds) && odds > 1
+    ? odds
+    : null;
+}
+
 function marketGuard(input: {
   side: "A" | "B";
   executionQuotes: Array<{
@@ -356,6 +397,14 @@ export async function GET(request: NextRequest) {
     : [...FRENCH_EXECUTION_BOOKMAKERS];
 
   try {
+    const previousSnapshot = await getSelectionSnapshot(modelTour).catch(() => null);
+    const previousAnalyzed =
+      previousSnapshot &&
+      Array.isArray((previousSnapshot.payload as Record<string, unknown>).allAnalyzed)
+        ? ((previousSnapshot.payload as Record<string, unknown>)
+            .allAnalyzed as PreviousAnalyzedRow[])
+        : [];
+
     const liveResult = await getUpcomingTourFixtures(
       liveKey,
       rawTour as LiveTour,
@@ -509,7 +558,7 @@ export async function GET(request: NextRequest) {
           : sharp.marketProbabilityB
         : null;
 
-      const guard = marketGuard({
+      const marketSafety = marketGuard({
         side,
         executionQuotes,
         odds,
@@ -519,14 +568,50 @@ export async function GET(request: NextRequest) {
         sharpProbability,
       });
 
-      const classification =
-        guard.blocked
-          ? { tier: "NO_BET" as const, stakeUnits: 0 }
-          : model.mode === "rank_only_fallback"
-            ? edge >= 0.03 && ev > 0
-              ? { tier: "LEAN" as const, stakeUnits: 0 }
-              : { tier: "NO_BET" as const, stakeUnits: 0 }
-            : classify(edge, ev);
+      const calibration = calibrationGuard(probability, edge);
+      const combinedGuard = {
+        blocked: marketSafety.blocked || calibration.blocked,
+        reasons: [...marketSafety.reasons, ...calibration.reasons],
+      };
+
+      const rawClassification =
+        model.mode === "rank_only_fallback"
+          ? edge >= 0.03 && ev > 0
+            ? { tier: "LEAN" as const, stakeUnits: 0 }
+            : { tier: "NO_BET" as const, stakeUnits: 0 }
+          : classify(edge, ev);
+
+      const classification = combinedGuard.blocked
+        ? { tier: "NO_BET" as const, stakeUnits: 0 }
+        : rawClassification;
+
+      const previousSelectedOdds = previousOddsForSide(
+        previousAnalyzed,
+        live,
+        side,
+      );
+      const selectedLineMovement = lineMovementPct(previousSelectedOdds, odds);
+
+      const anchorReferenceA =
+        sharp?.marketProbabilityA ?? executable.marketProbabilityA;
+      const anchorProbabilityA = marketAnchorProbability(
+        model.probabilityA,
+        anchorReferenceA,
+      );
+      const anchorProbabilityB = 1 - anchorProbabilityA;
+      const anchorEvA = anchorProbabilityA * executable.oddsA - 1;
+      const anchorEvB = anchorProbabilityB * executable.oddsB - 1;
+      const anchorSide = anchorEvA >= anchorEvB ? ("A" as const) : ("B" as const);
+      const anchorProbability =
+        anchorSide === "A" ? anchorProbabilityA : anchorProbabilityB;
+      const anchorMarketProbability =
+        anchorSide === "A"
+          ? executable.marketProbabilityA
+          : executable.marketProbabilityB;
+      const anchorOdds =
+        anchorSide === "A" ? executable.oddsA : executable.oddsB;
+      const anchorEv = anchorSide === "A" ? anchorEvA : anchorEvB;
+      const anchorEdge = anchorProbability - anchorMarketProbability;
 
       analyzed.push({
         matchId: live.id ?? null,
@@ -565,9 +650,22 @@ export async function GET(request: NextRequest) {
           marketName: executable.marketName,
           pinnacleNoVigProbabilityA: sharp?.marketProbabilityA ?? null,
           pinnacleNoVigProbabilityB: sharp?.marketProbabilityB ?? null,
-          sourceCount: guard.sourceCount,
-          medianSelectedOdds: guard.medianSelectedOdds,
-          priceSpreadRatio: guard.priceSpreadRatio,
+          sourceCount: marketSafety.sourceCount,
+          medianSelectedOdds: marketSafety.medianSelectedOdds,
+          priceSpreadRatio: marketSafety.priceSpreadRatio,
+          previousSelectedOdds,
+          lineMovementPct: selectedLineMovement,
+        },
+        marketAnchor: {
+          strength: MARKET_ANCHOR_STRENGTH,
+          side: anchorSide,
+          player: anchorSide === "A" ? p1.name : p2.name,
+          probability: anchorProbability,
+          marketProbability: anchorMarketProbability,
+          odds: anchorOdds,
+          edge: anchorEdge,
+          ev: anchorEv,
+          fairOdds: 1 / anchorProbability,
         },
         decision: {
           side,
@@ -581,17 +679,14 @@ export async function GET(request: NextRequest) {
           sharpProbability,
           sharpDelta:
             sharpProbability == null ? null : probability - sharpProbability,
+          rawTier: rawClassification.tier,
           tier: classification.tier,
           stakeUnits: classification.stakeUnits,
           bet:
-            !guard.blocked &&
+            !combinedGuard.blocked &&
             model.mode === "full_logit" &&
-            (classification.tier === "PREMIUM" ||
-              classification.tier === "VALUE"),
-          guard: {
-            blocked: guard.blocked,
-            reasons: guard.reasons,
-          },
+            classification.tier === "VALUE",
+          guard: combinedGuard,
         },
       });
     }
@@ -610,15 +705,17 @@ export async function GET(request: NextRequest) {
     ).length;
 
     const shadowPicks = analyzed.flatMap((row) => {
-      if (
-        row.model.mode !== "full_logit" ||
-        row.decision.guard.blocked ||
-        row.matchId == null
-      ) {
+      if (row.model.mode !== "full_logit" || row.matchId == null) {
         return [];
       }
 
       const variants: string[] = [];
+
+      if (row.decision.rawTier === "PREMIUM") {
+        variants.push("premium_legacy");
+      }
+
+      if (!row.decision.guard.blocked) {
 
       if (
         row.decision.edge >= 0.10 &&
@@ -645,8 +742,9 @@ export async function GET(request: NextRequest) {
       ) {
         variants.push("short_price");
       }
+      }
 
-      return variants.map((variant) => ({
+      const candidates = variants.map((variant) => ({
         variant,
         providerMatchId: String(row.matchId),
         scheduledAt: row.scheduledTime,
@@ -663,6 +761,32 @@ export async function GET(request: NextRequest) {
         ev: row.decision.ev,
         fairOdds: row.decision.fairOdds,
       }));
+
+      if (
+        row.marketAnchor.edge >= 0.02 &&
+        row.marketAnchor.ev > 0 &&
+        row.marketAnchor.odds <= 6
+      ) {
+        candidates.push({
+          variant: "market_anchor",
+          providerMatchId: String(row.matchId),
+          scheduledAt: row.scheduledTime,
+          tournament: row.tournament,
+          playerAName: row.playerA.name,
+          playerBName: row.playerB.name,
+          selectedSide: row.marketAnchor.side,
+          selectedPlayerName: row.marketAnchor.player,
+          bookmaker: row.market.bookmaker,
+          odds: row.marketAnchor.odds,
+          modelProbability: row.marketAnchor.probability,
+          marketProbability: row.marketAnchor.marketProbability,
+          edge: row.marketAnchor.edge,
+          ev: row.marketAnchor.ev,
+          fairOdds: row.marketAnchor.fairOdds,
+        });
+      }
+
+      return candidates;
     });
 
     let shadowTracking: {
@@ -785,7 +909,7 @@ export async function GET(request: NextRequest) {
         fallbackMatches: analyzed.length - fullModelCount,
         noForcedBets: true,
         fallbackPolicy:
-          "Rank-only fallback is informational only and can never become an actionable bet. PREMIUM/VALUE bets require full_logit.",
+          "Rank-only fallback is informational only. Live execution is VALUE-only, Quality >=90, with calibration guards. PREMIUM is tracked in Shadow Lab.",
       },
       bookmaker: requestedBookmaker ?? "AUTO_FR",
       executionBookmakers,
