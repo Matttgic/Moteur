@@ -279,6 +279,32 @@ async function recordBets(supabase: any, betsInput: unknown) {
 
     const qualityScore = numberOrNull(bet?.qualityScore);
     const qualityGrade = bet?.qualityGrade == null ? null : String(bet.qualityGrade);
+    const qualitySignals = Array.isArray(bet?.qualitySignals)
+      ? bet.qualitySignals.map((value: unknown) => String(value))
+      : [];
+    const modelProbability = numberOrNull(bet?.modelProbability);
+    const edge = numberOrNull(bet?.edge);
+    const tier = String(bet?.tier ?? "NO_BET");
+
+    const v2PolicySignal = qualitySignals.includes("quality_v2_live_evidence");
+    const calibrationRedZone =
+      modelProbability !== null &&
+      ((modelProbability >= 0.4 && modelProbability < 0.5) ||
+        (modelProbability >= 0.6 && modelProbability < 0.7));
+    const extremeEdge = edge !== null && edge >= 0.2;
+
+    // Defense in depth: until callers emit Quality v2, nothing new can enter
+    // the real economic log. PREMIUM remains research-only.
+    if (
+      !v2PolicySignal ||
+      tier !== "VALUE" ||
+      qualityScore === null ||
+      qualityScore < 90 ||
+      calibrationRedZone ||
+      extremeEdge
+    ) {
+      continue;
+    }
 
     const row = {
       provider_match_id: providerMatchId,
@@ -291,12 +317,12 @@ async function recordBets(supabase: any, betsInput: unknown) {
       selected_player_name: String(bet?.selectedPlayerName ?? ""),
       bookmaker,
       odds: currentOdds,
-      model_probability: numberOrNull(bet?.modelProbability),
+      model_probability: modelProbability,
       market_probability: numberOrNull(bet?.marketProbability),
-      edge: numberOrNull(bet?.edge),
+      edge,
       ev: numberOrNull(bet?.ev),
       fair_odds: numberOrNull(bet?.fairOdds),
-      tier: String(bet?.tier ?? "NO_BET"),
+      tier,
       stake_units: numberOrNull(bet?.stakeUnits) ?? 0,
       model_mode: String(bet?.modelMode ?? "unknown"),
       model_quality: numberOrNull(bet?.modelQuality),
@@ -307,7 +333,7 @@ async function recordBets(supabase: any, betsInput: unknown) {
         bet?.qualityComponents && typeof bet.qualityComponents === "object"
           ? bet.qualityComponents
           : null,
-      quality_signals: Array.isArray(bet?.qualitySignals) ? bet.qualitySignals : null,
+      quality_signals: qualitySignals,
       updated_at: new Date().toISOString(),
     };
 
