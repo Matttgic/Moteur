@@ -118,3 +118,25 @@ This cadence keeps the public UI fresh without allowing page traffic to consume 
 ## The Odds API quota protection
 
 - The Odds API fallback uses a 2-hour server cache for price-board requests so the 500-credit monthly quota is not exhausted by 30-minute selection snapshots. The free `/sports` discovery remains cached separately.
+
+
+## Live execution policy v2 — 2026-10-11
+
+Live evidence review after 189 graded bookmaker rows changed execution policy without
+changing the trained Full Logit coefficients:
+
+- only VALUE candidates can become executable;
+- Bet Quality Score must be >= 90;
+- PREMIUM candidates are recorded as `premium_legacy` in Shadow Lab;
+- model-probability bands 40–50% and 60–70% are calibration red zones and are
+  shadow-only until revalidated;
+- model/market gaps >=20% are treated as an extreme-edge red zone;
+- Quality v2 includes same-book line movement between consecutive snapshots;
+- `market_anchor` is a shadow challenger using market log-odds plus 35% of the
+  Full Logit correction;
+- economic headline metrics deduplicate bookmaker rows by match + selected player
+  and use the best recorded price while keeping every bookmaker row in history;
+- the Live Model Audit compares model vs market Brier/Log Loss and tracks rolling,
+  calibration, odds-band and edge-band performance.
+
+These controls are evidence-driven guardrails, not guarantees of profitability.
