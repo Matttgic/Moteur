@@ -81,6 +81,10 @@ export default function QualityEconomics() {
           CLV sur un échantillon suffisant.
         </p>
         <p>
+          Quality v2 démarre avec cette politique live. Les anciens scores restent
+          archivés tels qu&apos;ils ont été produits et ne sont pas recalculés a posteriori.
+        </p>
+        <p>
           Score moyen journalisé :{" "}
           <strong>
             {data.overall.avgQualityScore == null
