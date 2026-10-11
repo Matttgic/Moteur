@@ -487,6 +487,7 @@ async function economicSummary(supabase: any) {
     .slice(0, 500)
     .map((row) => ({
       id: row.id,
+      providerMatchId: row.provider_match_id,
       tour: row.tour,
       scheduledAt: row.scheduled_at,
       tournament: row.tournament,
