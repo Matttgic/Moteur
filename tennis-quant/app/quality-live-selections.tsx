@@ -95,6 +95,7 @@ function formatTime(value: string | null) {
 
 function signalLabel(signal: string) {
   const labels: Record<string, string> = {
+    quality_v2_live_evidence: "score v2 · données live",
     strong_model_quality: "modèle solide",
     deep_market_confirmation: "marché confirmé",
     sharp_market_confirms_edge: "Pinnacle confirme",
