@@ -237,8 +237,8 @@ export default function EconomicValidation() {
           <p className="eyebrow">ECONOMIC VALIDATION · LIVE TRACKING</p>
           <h2>Performance des picks réellement proposés</h2>
           <p>
-            Pas de ROI théorique : uniquement les sélections réellement sorties
-            par le moteur, avec leur cote et leur Bet Quality Score au moment de la décision.
+            Le bilan principal utilise désormais les décisions uniques à la meilleure cote.
+            Les lignes bookmakers restent conservées dans l&apos;historique pour audit.
           </p>
         </div>
         <span className="economicStatus">{statusText(data.sampleStatus)}</span>
@@ -279,7 +279,7 @@ export default function EconomicValidation() {
         <article>
           <span>Bet Quality moyen</span>
           <strong>{stats.avgQualityScore == null ? "—" : `${Math.round(stats.avgQualityScore)}/100`}</strong>
-          <small>seuil ≥70 requis pour être proposé</small>
+          <small>nouveau seuil live ≥90 · VALUE uniquement</small>
         </article>
         <article>
           <span>Cote moyenne</span>
