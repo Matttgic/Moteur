@@ -207,13 +207,14 @@ type PreviousAnalyzedRow = {
   matchId?: number | string | null;
   playerA?: { name?: string };
   playerB?: { name?: string };
-  market?: { oddsA?: number; oddsB?: number };
+  market?: { bookmaker?: string; oddsA?: number; oddsB?: number };
 };
 
 function previousOddsForSide(
   rows: PreviousAnalyzedRow[],
   live: LiveMatch,
   side: "A" | "B",
+  bookmaker: string,
 ) {
   const p1 = live.players?.p1?.name;
   const p2 = live.players?.p2?.name;
@@ -231,6 +232,8 @@ function previousOddsForSide(
       const b = row.playerB?.name;
       return Boolean(a && b && pairKey(a, b) === pairKey(p1, p2));
     });
+
+  if (previous?.market?.bookmaker !== bookmaker) return null;
 
   const odds = side === "A" ? previous?.market?.oddsA : previous?.market?.oddsB;
   return typeof odds === "number" && Number.isFinite(odds) && odds > 1
@@ -589,6 +592,7 @@ export async function GET(request: NextRequest) {
         previousAnalyzed,
         live,
         side,
+        bookmaker,
       );
       const selectedLineMovement = lineMovementPct(previousSelectedOdds, odds);
 
