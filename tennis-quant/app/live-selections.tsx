@@ -28,6 +28,7 @@ type BetRow = {
     sourceCount?: number;
     medianSelectedOdds?: number | null;
     priceSpreadRatio?: number | null;
+    lineMovementPct?: number | null;
   };
   decision: {
     side: "A" | "B";
@@ -95,11 +96,13 @@ function qualityFor(row: BetRow) {
     modelQuality: row.model.quality,
     sourceCount: row.market.sourceCount ?? 0,
     sharpProbability: row.decision.sharpProbability ?? null,
+    marketProbability: row.decision.marketProbability,
     modelProbability: row.decision.modelProbability,
     edge: row.decision.edge,
     ev: row.decision.ev,
     odds: row.decision.odds,
     priceSpreadRatio: row.market.priceSpreadRatio ?? null,
+    lineMovementPct: row.market.lineMovementPct ?? null,
   });
 }
 
@@ -175,8 +178,8 @@ export default function LiveSelections() {
           <h2>Sélections du moteur</h2>
           <p>
             Le moteur peut répondre <strong>NO BET</strong>. Les paris à miser
-            exigent le <strong>FULL ML</strong>. Le Bet Quality Score 0–100
-            mesure la robustesse du signal sans modifier encore les seuils de pari.
+            exigent le <strong>FULL ML</strong>. L&apos;exécution live est désormais
+            limitée aux VALUE avec un Bet Quality Score ≥90 ; PREMIUM reste en Shadow.
           </p>
         </div>
 
@@ -322,7 +325,7 @@ export default function LiveSelections() {
                       </span>
                       <span>Mise {row.decision.stakeUnits.toFixed(2)}u</span>
                       <span>
-                        Qualité {quality.actionable ? "≥70" : "<70"}
+                        Qualité {quality.actionable ? "≥90" : "<90"}
                       </span>
                       {typeof row.market.sourceCount === "number" ? (
                         <span>{row.market.sourceCount} book(s) FR</span>

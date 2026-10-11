@@ -4,6 +4,7 @@ import EconomicValidation from "./economic-validation";
 import QualityEconomics from "./quality-economics";
 import SystemHealth from "./system-health";
 import ShadowLab from "./shadow-lab";
+import LiveModelAudit from "./live-model-audit";
 
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const tours = ["ATP", "WTA"] as const;
@@ -46,7 +47,7 @@ export default function Home() {
         </article>
         <article>
           <span>Filtre qualité</span>
-          <strong>≥ 70 / 100</strong>
+          <strong>≥ 90 / 100</strong>
         </article>
       </section>
 
@@ -130,6 +131,8 @@ export default function Home() {
 
       <EconomicValidation />
 
+      <LiveModelAudit />
+
       <QualityEconomics />
 
       <ShadowLab />
@@ -149,7 +152,7 @@ export default function Home() {
           <p><strong>5.</strong> NO BET reste une sortie de premier rang.</p>
           <p><strong>6.</strong> ROI, drawdown et CLV mesurés sur les picks réellement sortis.</p>
           <p><strong>7.</strong> Settlement et contrôle santé automatisés par cron.</p>
-          <p><strong>8.</strong> Bet Quality Score ≥ 70 requis pour proposer un VALUE/PREMIUM.</p>
+          <p><strong>8.</strong> Exécution live : VALUE uniquement, Bet Quality ≥ 90. PREMIUM reste suivi dans Shadow Lab.</p>
         </div>
       </section>
 

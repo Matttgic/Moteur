@@ -1288,3 +1288,126 @@ footer {
     width: 100%;
   }
 }
+
+
+/* live-model-audit */
+.auditPanel {
+  margin: 34px 0;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: rgba(16, 28, 25, 0.9);
+}
+
+.auditHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.auditHeader p {
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.auditBadge {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.auditKpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.auditKpis article,
+.auditCompare article {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(8, 17, 15, 0.55);
+}
+
+.auditKpis span,
+.auditCompare span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auditKpis strong,
+.auditCompare strong {
+  display: block;
+  font-size: 20px;
+}
+
+.auditKpis small,
+.auditCompare small {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+.auditCompare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.auditTables {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.auditTables > div {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(8, 17, 15, 0.38);
+}
+
+.auditTables strong {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.auditTables span {
+  display: block;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auditTables span:last-child {
+  border-bottom: 0;
+}
+
+@media (max-width: 760px) {
+  .auditHeader {
+    flex-direction: column;
+  }
+
+  .auditKpis,
+  .auditCompare,
+  .auditTables {
+    grid-template-columns: 1fr;
+  }
+
+  .auditPanel {
+    padding: 18px;
+  }
+}

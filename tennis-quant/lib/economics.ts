@@ -49,6 +49,7 @@ type EconomicBetRow = {
     bookmaker: string;
     sourceCount?: number;
     priceSpreadRatio?: number | null;
+    lineMovementPct?: number | null;
   };
   decision: {
     side: "A" | "B";
@@ -79,16 +80,19 @@ export async function recordEconomicBets(
         modelQuality: row.model.quality,
         sourceCount: row.market.sourceCount ?? 0,
         sharpProbability: row.decision.sharpProbability ?? null,
+        marketProbability: row.decision.marketProbability,
         modelProbability: row.decision.modelProbability,
         edge: row.decision.edge,
         ev: row.decision.ev,
         odds: row.decision.odds,
         priceSpreadRatio: row.market.priceSpreadRatio ?? null,
+        lineMovementPct: row.market.lineMovementPct ?? null,
       }),
     }))
     .filter(
       ({ row, quality }) =>
         row.model.mode === "full_logit" &&
+        row.decision.tier === "VALUE" &&
         row.decision.bet &&
         quality.actionable,
     );
