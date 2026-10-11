@@ -148,7 +148,7 @@ export function calculateBetQuality(input: BetQualityInput): BetQualityResult {
     ),
   );
 
-  const signals: string[] = [];
+  const signals: string[] = ["quality_v2_live_evidence"];
   const sharpDelta =
     input.sharpProbability == null
       ? null
