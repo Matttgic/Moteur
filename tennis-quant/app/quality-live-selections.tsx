@@ -16,7 +16,9 @@ type Quality = {
     edge: number;
     ev: number;
     priceStability: number;
-    oddsRisk: number;
+    oddsBand: number;
+    calibration: number;
+    lineMovement: number;
   };
   signals: string[];
 };
@@ -36,6 +38,7 @@ type BetRow = {
     bookmaker: string;
     sourceCount?: number;
     priceSpreadRatio?: number | null;
+    lineMovementPct?: number | null;
   };
   decision: {
     player: string;
@@ -99,6 +102,10 @@ function signalLabel(signal: string) {
     wide_cross_book_spread: "dispersion des cotes",
     longshot_price: "cote longue",
     extreme_model_market_gap: "écart modèle/marché élevé",
+    live_calibration_red_zone: "zone calibration suspendue",
+    live_odds_band_underperforming: "zone de cote à surveiller",
+    market_moved_with_pick: "marché va dans notre sens",
+    market_moved_against_pick: "marché va contre le pick",
     below_actionable_quality_threshold: "sous le seuil qualité",
   };
   return labels[signal] ?? signal.replaceAll("_", " ");
@@ -143,8 +150,8 @@ export default function QualityLiveSelections() {
           <h2>Paris robustes du moteur</h2>
           <p>
             Le score mesure la solidité de l&apos;exécution, pas la probabilité de
-            gagner. Un VALUE/PREMIUM doit atteindre <strong>70/100</strong> pour
-            être proposé.
+            gagner. Seuls les <strong>VALUE</strong> à <strong>90/100 ou plus</strong>
+            peuvent être proposés. Les PREMIUM sont suivis en Shadow Lab.
           </p>
         </div>
         <div className="liveControls">
@@ -279,8 +286,8 @@ export default function QualityLiveSelections() {
             <div className="liveState noBetState">
               <strong>NO BET {tour}</strong>
               <span>
-                Aucun VALUE/PREMIUM ne dépasse actuellement le seuil qualité de
-                {" "}{data.qualityPolicy.actionableThreshold}/100.
+                Aucun VALUE ne passe actuellement le Quality Gate de
+                {" "}{data.qualityPolicy.actionableThreshold}/100 et les gardes live.
               </span>
             </div>
           )}
