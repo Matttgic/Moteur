@@ -20,12 +20,14 @@ type AnalyzedRow = {
   market?: {
     sourceCount?: number;
     priceSpreadRatio?: number | null;
+    lineMovementPct?: number | null;
   };
   decision?: {
     bet?: boolean;
     tier?: string;
     odds?: number;
     modelProbability?: number;
+    marketProbability?: number;
     edge?: number;
     ev?: number;
     sharpProbability?: number | null;
@@ -50,6 +52,7 @@ function scoreRow(row: AnalyzedRow) {
       decision.sharpProbability == null
         ? null
         : Number(decision.sharpProbability),
+    marketProbability: Number(decision.marketProbability ?? 0),
     modelProbability: Number(decision.modelProbability ?? 0),
     edge: Number(decision.edge ?? 0),
     ev: Number(decision.ev ?? 0),
@@ -58,10 +61,14 @@ function scoreRow(row: AnalyzedRow) {
       market.priceSpreadRatio == null
         ? null
         : Number(market.priceSpreadRatio),
+    lineMovementPct:
+      market.lineMovementPct == null
+        ? null
+        : Number(market.lineMovementPct),
   });
 
-  const tierEligible =
-    decision.tier === "PREMIUM" || decision.tier === "VALUE";
+  // Live policy: only VALUE can be actionable. PREMIUM remains in Shadow Lab.
+  const tierEligible = decision.tier === "VALUE";
   const fullModel = model.mode === "full_logit";
   const guardBlocked = Boolean(decision.guard?.blocked);
   const actionable =
@@ -131,8 +138,7 @@ export async function GET(request: NextRequest) {
       .slice(0, 5);
     const qualityRejected = allAnalyzed.filter((row) => {
       const decision = row.decision as Record<string, any> | undefined;
-      const tierEligible =
-        decision?.tier === "PREMIUM" || decision?.tier === "VALUE";
+      const tierEligible = decision?.tier === "VALUE";
       return tierEligible && !decision?.guard?.blocked && !decision?.bet;
     }).length;
 
