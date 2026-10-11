@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 
 type Aggregate = {
   total: number;
+  rawTotal?: number;
+  uniqueDecisions?: number;
+  duplicateRows?: number;
   settled: number;
   graded?: number;
   pending: number;
@@ -78,6 +81,12 @@ type EconomicSummary = {
     scheduledAt: string;
   }>;
   history?: HistoryRow[];
+  decisionPolicy?: {
+    aggregation: string;
+    rawRows: number;
+    uniqueDecisions: number;
+    duplicateRows: number;
+  };
 };
 
 type HistoryFilter = "ALL" | "PENDING" | "WIN" | "LOSS" | "VOID";
@@ -246,9 +255,13 @@ export default function EconomicValidation() {
 
       <div className="economicStats">
         <article>
-          <span>Paris enregistrés</span>
-          <strong>{stats.total}</strong>
-          <small>{stats.pending} en attente</small>
+          <span>Décisions uniques</span>
+          <strong>{stats.uniqueDecisions ?? stats.total}</strong>
+          <small>
+            {stats.rawTotal != null
+              ? `${stats.rawTotal} lignes bookmaker · ${stats.duplicateRows ?? 0} doublon(s)`
+              : `${stats.pending} en attente`}
+          </small>
         </article>
         <article>
           <span>Bilan réglé</span>
