@@ -23,6 +23,8 @@ const labels: Record<string, string> = {
   strict_edge: "Edge strict",
   market_confirmed: "Marché confirmé",
   short_price: "Cotes courtes",
+  premium_legacy: "PREMIUM historique · Shadow",
+  market_anchor: "Market Anchor · Challenger",
 };
 
 const pct = (value: number | null) =>
