@@ -267,6 +267,14 @@ export default function QualityLiveSelections() {
                       <span>EV</span>
                       <strong>{pct(row.decision.ev)}</strong>
                     </div>
+                    <div>
+                      <span>Mouvement</span>
+                      <strong>
+                        {row.market.lineMovementPct == null
+                          ? "—"
+                          : pct(row.market.lineMovementPct)}
+                      </strong>
+                    </div>
                   </div>
 
                   <div className="liveTags">
