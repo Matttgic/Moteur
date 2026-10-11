@@ -6,6 +6,7 @@ type Result = "WIN" | "LOSS" | "VOID" | null;
 
 type HistoryRow = {
   id: string;
+  providerMatchId?: string | null;
   tour: string;
   scheduledAt: string | null;
   tournament: string | null;
@@ -119,6 +120,11 @@ function aggregate(rows: HistoryRow[]): Aggregate {
 }
 
 function decisionKey(row: HistoryRow) {
+  const selected = row.selectedPlayer.trim().toLowerCase();
+  if (row.providerMatchId) {
+    return [row.tour, row.providerMatchId, selected].join("|");
+  }
+
   const players = [row.playerA.trim().toLowerCase(), row.playerB.trim().toLowerCase()]
     .sort()
     .join("|");
@@ -126,7 +132,7 @@ function decisionKey(row: HistoryRow) {
     row.tour,
     row.scheduledAt ?? "",
     players,
-    row.selectedPlayer.trim().toLowerCase(),
+    selected,
   ].join("|");
 }
 
