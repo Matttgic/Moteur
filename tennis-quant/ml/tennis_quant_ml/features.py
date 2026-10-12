@@ -25,6 +25,9 @@ FEATURE_COLUMNS = [
 
 SURFACES = ("Hard", "Clay", "Grass", "Carpet")
 
+K_GLOBAL = 28.0
+K_SURFACE = 32.0
+
 
 @dataclass
 class PlayerState:
@@ -42,6 +45,13 @@ class PlayerState:
 
 def _expected(rating_a: float, rating_b: float) -> float:
     return 1.0 / (1.0 + 10.0 ** ((rating_b - rating_a) / 400.0))
+
+
+def _elo_update(winner: float, loser: float, k: float) -> tuple[float, float]:
+    # Zero-sum: the loser gives up exactly what the winner gains.
+    # The loser's expected score is 1 - E(winner), not E(winner).
+    delta = k * (1.0 - _expected(winner, loser))
+    return winner + delta, loser - delta
 
 
 def _smoothed_rate(
@@ -169,17 +179,10 @@ def build_features(matches: pd.DataFrame, tour: str) -> pd.DataFrame:
             }
         )
 
-        global_expected = _expected(ws.elo, ls.elo)
-        k_global = 28.0
-        ws.elo += k_global * (1.0 - global_expected)
-        ls.elo += k_global * (0.0 - global_expected)
-
-        surface_expected = _expected(
-            ws.surface_elo[surface_key], ls.surface_elo[surface_key]
+        ws.elo, ls.elo = _elo_update(ws.elo, ls.elo, K_GLOBAL)
+        ws.surface_elo[surface_key], ls.surface_elo[surface_key] = _elo_update(
+            ws.surface_elo[surface_key], ls.surface_elo[surface_key], K_SURFACE
         )
-        k_surface = 32.0
-        ws.surface_elo[surface_key] += k_surface * (1.0 - surface_expected)
-        ls.surface_elo[surface_key] += k_surface * (0.0 - surface_expected)
 
         ws.recent_results.append(1)
         ls.recent_results.append(0)
@@ -231,17 +234,10 @@ def export_player_states(matches: pd.DataFrame, tour: str) -> dict:
         ws = states[winner]
         ls = states[loser]
 
-        global_expected = _expected(ws.elo, ls.elo)
-        k_global = 28.0
-        ws.elo += k_global * (1.0 - global_expected)
-        ls.elo += k_global * (0.0 - global_expected)
-
-        surface_expected = _expected(
-            ws.surface_elo[surface_key], ls.surface_elo[surface_key]
+        ws.elo, ls.elo = _elo_update(ws.elo, ls.elo, K_GLOBAL)
+        ws.surface_elo[surface_key], ls.surface_elo[surface_key] = _elo_update(
+            ws.surface_elo[surface_key], ls.surface_elo[surface_key], K_SURFACE
         )
-        k_surface = 32.0
-        ws.surface_elo[surface_key] += k_surface * (1.0 - surface_expected)
-        ls.surface_elo[surface_key] += k_surface * (0.0 - surface_expected)
 
         ws.recent_results.append(1)
         ls.recent_results.append(0)
