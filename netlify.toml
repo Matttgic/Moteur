@@ -1,0 +1,5 @@
+[build]
+  publish = "edgescope-static"
+
+[build.environment]
+  NODE_VERSION = "22"
